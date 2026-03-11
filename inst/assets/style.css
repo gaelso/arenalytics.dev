@@ -1,0 +1,139 @@
+/* Fix last menu item dropping on resizing with navbar-expand-sm */
+.navbar-nav {
+  flex-wrap: nowrap;  /* prevent wrapping */
+}
+.navbar {
+  /*overflow-x: auto;     /* optional: allow scrolling if too wide */
+  white-space: nowrap;  /* prevent text wrapping inside items */
+}
+
+/* Fix the bootstrap-select dropdown specifically */
+.bootstrap-select .dropdown-menu {
+  z-index: 10000 !important;
+}
+
+/* Smooth scrolling + hero style + footer */
+html, body {
+  height: 100%;
+}
+
+body {
+  padding-top: 70px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body > .container-fluid {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.bslib-page-navbar > .tab-content {
+  flex: 1 0 auto;
+}
+
+.hero-section {
+  min-height: 75vh;
+  display: flex;
+  align-items: center;
+}
+
+.hero-title {
+  font-weight: 700;
+  font-size: 3rem;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: #6c757d;
+}
+
+.hero-image {
+  max-height: 65vh;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 1.5rem;
+}
+
+.feature-card {
+  transition: all 0.2s ease-in-out;
+  border-radius: 1rem;
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 1rem 2rem rgba(0,0,0,0.08);
+}
+
+.section-padding {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+.footer {
+  margin-top: auto;
+  /*padding: 1.5rem 0;*/
+    border-top: 1px solid #e9ecef;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+
+
+/* Make buttons smaller */
+.btn-small {
+  line-height: 1 !important;
+  font-weight: 300 !important;
+}
+
+/* Get color theme from Yeti as nicer
+:root {
+  --bs-primary: #008cba;
+  --bs-secondary: #eee;
+  --bs-success: #43ac6a;
+  --bs-info: #5bc0de;
+  --bs-warning: #e99002;
+  --bs-danger: #f04124;
+  --bs-light: #eee;
+  --bs-dark: #333;
+}
+*/
+
+/* Force dark color navbar text elements in Yeti theme */
+.navbar {
+  --bs-navbar-color: rgba(0, 0, 0, 0.65) !important;
+  --bs-navbar-hover-color: rgba(0, 0, 0, 0.8) !important;
+  --bs-navbar-disabled-color: rgba(0, 0 , 0, 0.3) !important;
+  --bs-navbar-active-color: rgba(0, 0, 0, 1) !important;
+  --bs-navbar-brand-color: rgba(0, 0, 0, 1) !important;
+  --bs-navbar-brand-hover-color: rgba(0, 0, 0, 1) !important;
+  --bs-navbar-toggler-icon-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2890,90,90,0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+  --bs-navbar-toggler-border-color: rgba(0, 0, 0, 0.15);
+}
+
+/* Copy border radius from minty as nicer */
+:root {
+  --bs-border-radius: 0.4rem;
+  --bs-border-radius-sm: 0.3rem;
+  --bs-border-radius-lg: 0.6rem;
+  --bs-border-radius-xl: 1rem;
+  --bs-border-radius-xxl: 2rem;
+  --bs-border-radius-2xl: var(--bs-border-radius-xxl);
+}
+
+/* Rm container-name to avoid showcase moving to top in value box */
+.bslib-value-box {
+  container-name: none !important;
+}

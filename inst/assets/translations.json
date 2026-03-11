@@ -1,0 +1,41 @@
+{
+  "cultural_date_format": "%d-%m-%Y",
+  "languages": ["en", "fr", "sp"],
+  "translation": [
+    {
+    "en": "My Analytical Dashboard",
+    "fr": "Mon tableau de bord",
+    "sp": "Mi panel analítico"
+    },
+    {
+      "en": "Home",
+      "fr": "Accueil",
+      "sp": "Inicio"
+    },
+    {
+      "en": "Tool",
+      "fr": "Analyser",
+      "sp": "Análisis"
+    },
+    {
+      "en": "About",
+      "fr": "À propos",
+      "sp": "Acerca de"
+    },
+    {
+    "en": "A Smarter Way to Explore Data",
+    "fr": "Une façon plus intelligente d'explorer les données",
+    "sp": "Una forma más inteligente de explorar datos"
+  },
+  {
+    "en": "Transform complex data into clear insights with a beautiful, intuitive interface.",
+    "fr": "Transformez des données complexes en informations claires grâce à une interface belle et intuitive.",
+    "sp": "Transforma datos complejos en información clara con una interfaz hermosa e intuitiva."
+  },
+  {
+    "en": "Get Started",
+    "fr": "Commencer",
+    "sp": "Comenzar"
+  }
+   ]
+}
