@@ -1,2 +1,3 @@
-# arenalytics_dev
-development version of arenalytics
+# arenalytics.dev
+development version of arenalytics: https://github.com/openforis/arenalytics
+
