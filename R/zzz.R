@@ -4,7 +4,7 @@
 .onLoad <- function(libname, pkgname) {
   shiny::addResourcePath(
     prefix = "assets",
-    directoryPath = system.file("assets", package = "shinypkgTest")
+    directoryPath = system.file("assets", package = "arenalytics.dev")
   )
 }
 

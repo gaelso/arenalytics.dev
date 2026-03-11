@@ -40,25 +40,20 @@ shiny_run_arenalytics_dev <- function(...) {
   ## + UI Elements =============================================================
 
   ## App title with logo (as function because i18n$t() needs to be inside page_navbar())
-  app_title <- function(
-    .title = "My Analytical Dashboard",
-    .alt = "APPNAME",
-    .logo = "assets/logo.png",
-    .logo_height = '40px' ## CANNOT EXCEED 40px to avoid resizing issues (minor)
-    ) {
+  app_title <- function() {
     div(
       tags$a(
         href = "./", ## Send back to home page
-        alt = .alt,
-        tags$img(src = .logo, height = .logo_height),
+        alt = "Arena Dashboard",
+        tags$img(src = "assets/logo.png", height = '40px'), ## CANNOT EXCEED 40px to avoid resizing issues (minor)
         .noWS = "before-end"
       ),
-      i18n$t(.title),
-      style = "display:inline;font-color: black !important"
+      i18n$t("Analytical Dashboard for OpenForis Arena"),
+      style = 'display:inline;font-color: black !important; font-family: "Inter"'
     )
   }
 
-  app_window_title <- "APPNAME"
+  app_window_title <- "Arena Dashboard - OpenForis"
 
   ## App colors
   app_primary_color   <- "#4991B0"
@@ -74,7 +69,7 @@ shiny_run_arenalytics_dev <- function(...) {
       "Segoe UI Symbol","Noto Color Emoji"
     ),
     code_font = bslib::font_google("Fira Code"),
-    heading_font = bslib::font_google("Lato"),
+    heading_font = bslib::font_google("Inter"),
     primary = app_primary_color,
     secondary = app_secondary_color,
   )

@@ -19,7 +19,6 @@ Imports:
     rlang,
     shiny,
     shiny.i18n,
-    shinyFiles,
     shinyjs,
     shinyWidgets
 Remotes: 

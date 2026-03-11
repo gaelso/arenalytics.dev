@@ -3,7 +3,7 @@
   "languages": ["en", "fr", "sp"],
   "translation": [
     {
-    "en": "My Analytical Dashboard",
+    "en": "Analytical Dashboard for OpenForis Arena",
     "fr": "Mon tableau de bord",
     "sp": "Mi panel analítico"
     },
