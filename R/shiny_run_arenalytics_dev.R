@@ -33,6 +33,11 @@ shiny_run_arenalytics_dev <- function(...) {
   )
   i18n$set_translation_language('en')
 
+  ## Simplify text keys
+  ## All text is stored in R/utils-tr.R and called via keys with .tr_keys()
+  ## Simplified here to: .tr
+  .tr <- .tr_keys()
+
   ## + Javascript ===============================
   ## Script moved to files in inst/assets and called in the header
 
@@ -48,7 +53,7 @@ shiny_run_arenalytics_dev <- function(...) {
         tags$img(src = "assets/logo.png", height = '40px'), ## CANNOT EXCEED 40px to avoid resizing issues (minor)
         .noWS = "before-end"
       ),
-      i18n$t("Analytical Dashboard for OpenForis Arena"),
+      i18n$t(.tr$app_title),
       style = 'display:inline;font-color: black !important; font-family: "Inter"'
     )
   }
@@ -151,21 +156,21 @@ shiny_run_arenalytics_dev <- function(...) {
       nav_spacer(), ## align menu to the right
 
       nav_panel(
-        title = i18n$t("Home"),
+        title = i18n$t(.tr$nav_home),
         value = "home",
         #icon = icon("campground"),
         mod_home_UI("tab_home", i18n = i18n)
       ),
 
       nav_panel(
-        title = i18n$t("Tool"),
+        title = i18n$t(.tr$nav_tool),
         value = "tool",
         #icon = icon("mug-hot"),
         mod_tool_UI("tab_tool", i18n = i18n)
       ),
 
       nav_panel(
-        title = i18n$t("About"),
+        title = i18n$t(.tr$nav_about),
         value = "about",
        #icon = icon("info"),
         mod_about_UI("tab_about", i18n = i18n)
