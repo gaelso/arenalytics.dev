@@ -1,7 +1,7 @@
 #' Home module UI function
 #'
 #' @noRd
-mod_home_UI <- function(id, i18n){
+mod_home_UI <- function(id, i18n, .tr){
 
   ## From https://shiny.rstudio.com/articles/modules.html
   # `NS(id)` returns a namespace function, which was save as `ns` and will
@@ -25,16 +25,13 @@ mod_home_UI <- function(id, i18n){
 
   hero_txt <- div(
     class = "col-md-6 order-2 order-md-1",
-    h5(class = "hero-title", i18n$t("A Smarter Way to Explore Data")),
-    p(
-      class = "hero-subtitle mt-3",
-      i18n$t("Transform complex data into clear insights with a beautiful, intuitive interface.")
-    ),
+    p(class = "hero-title", i18n$t(.tr$hero_title)),
+    p(class = "hero-subtitle mt-3", i18n$t(.tr$hero_txt)),
     br(),
     ## ACTION BUTTON
     actionButton(
       inputId = ns("to_tool"),
-      label = i18n$t("Get Started"),
+      label = i18n$t(.tr$hero_btn),
       class = "btn btn-primary btn-lg px-4"
     )
   )
@@ -44,26 +41,50 @@ mod_home_UI <- function(id, i18n){
   card1 <- card(
     class = "feature-card shadow-sm",
     card_body(
-      h4("Fast & Interactive"),
-      p("Real-time data updates and dynamic visualizations.")
+      h3("Arena Analytics", style = "font-weight:700;"),
+      p(i18n$t(.tr$feat1_p1)),
+      p(
+        i18n$t(.tr$feat1_p2),
+        tags$a(
+          href = "https://github.com/openforis/arenalytics",
+          target = "_blank",
+          tags$span("Github", bsicons::bs_icon("github"))
+        )
+      ),
+      p(
+        i18n$t(.tr$feat1_p3), HTML("&nbsp;"),
+        actionButton(inputId = ns("to_tool2"), label = i18n$t(.tr$feat1_btn))
+      )
     )
   )
 
   card2 <- card(
     class = "feature-card shadow-sm",
     card_body(
-      h4("Modern Design"),
-      p("Clean layout optimized for desktop and mobile.")
+      h3("OpenForis Arena", style = "font-weight:700;"),
+      p(
+      i18n$t(.tr$feat2_p1),
+      tags$a(
+        href = "https://www.openforis.org/arena/",
+        target = "_blank",
+        span("OpenForis Arena", tags$img(src = "assets/logo-arena.png", height = "20px"), ".")
+        )
+      ),
+      p(i18n$t(.tr$feat2_p2)),
+      p(i18n$t(.tr$feat2_p3))
     )
   )
 
   card3 <- card(
     class = "feature-card shadow-sm",
     card_body(
-      h4("Powerful Analytics"),
-      p("Built with robust R infrastructure and scalable logic."),
-      p("For more information, go to:", HTML("&nbsp;"),
-        actionButton(inputId = ns("to_about"), label = "About")),
+      h3(i18n$t(.tr$feat3_title), style = "font-weight:700;"),
+      p(i18n$t(.tr$feat3_p1)),
+      p(i18n$t(.tr$feat3_p2)),
+      p(
+        i18n$t(.tr$feat3_p3), HTML("&nbsp;"),
+        actionButton(inputId = ns("to_about"), label = i18n$t(.tr$feat3_btn))
+      )
     )
   )
 

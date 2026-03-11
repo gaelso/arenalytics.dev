@@ -1,3 +1,8 @@
+## Custom gitignore
+*.DS_Store
+
+
+## Github default R gitignore
 # History files
 .Rhistory
 .Rapp.history

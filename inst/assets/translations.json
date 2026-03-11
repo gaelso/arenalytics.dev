@@ -23,12 +23,12 @@
       "sp": "Acerca de"
     },
     {
-    "en": "A Smarter Way to Explore Data",
+    "en": "Powerful analytics for your OpenForis Arena data",
     "fr": "Une façon plus intelligente d'explorer les données",
     "sp": "Una forma más inteligente de explorar datos"
   },
   {
-    "en": "Transform complex data into clear insights with a beautiful, intuitive interface.",
+    "en": "Explore your data from OpenForis Arena, gain insights and develop report-ready figures and statistics.",
     "fr": "Transformez des données complexes en informations claires grâce à une interface belle et intuitive.",
     "sp": "Transforma datos complejos en información clara con una interfaz hermosa e intuitiva."
   },
@@ -36,6 +36,61 @@
     "en": "Get Started",
     "fr": "Commencer",
     "sp": "Comenzar"
-  }
+  },
+  {
+    "en": "A dashboard shinyApp, arenalytics, shipped as a R package, unlocking the powerful statistics of R with the visual convenience of dashboards.",
+    "fr": "Une application dashboard shinApp, fournie comme un package R, exploitant la puissance statistique de R avec la commodité visuelle des tableaux de bord.",
+    "sp": "Un shinApp de panel, distribuido como un paquete R, desbloqueando la potente estadística de R con la conveniencia visual de los paneles."
+  },
+  {
+    "en": "For more details about the app developement or if any issue, find us on:",
+    "fr": "Pour plus de détails sur le développement de l'application ou en cas de problème, retrouvez-nous sur :",
+    "sp": "Para más detalles sobre el desarrollo de la aplicación o si hay algún problema, encuéntrenos en:"
+  },
+  {
+    "en": "Start playing with your data:",
+    "fr": "Commencez à explorer vos données :",
+    "sp": "Comience a explorar sus datos:"
+  },
+  {
+    "en": "Here",
+    "fr": "Ici",
+    "sp": "Aquí"
+  },
+  {
+      "en": "Arena Analytics is tailored to work with",
+      "fr": "Arena Analytics est conçu pour fonctionner avec",
+      "sp": "Arena Analytics está diseñado para funcionar con"
+    },
+    {
+      "en": "OpenForis Arena helps you create a survey, collect and clean data, and develop a processing chain for calculating additional variables from your data.",
+      "fr": "OpenForis Arena vous aide à créer une enquête, collecter et nettoyer les données, et développer une chaîne de traitement pour calculer des variables supplémentaires à partir de vos données.",
+      "sp": "OpenForis Arena le ayuda a crear una encuesta, recopilar y limpiar datos, y desarrollar una cadena de procesamiento para calcular variables adicionales a partir de sus datos."
+    },
+    {
+      "en": "The outcome of this process is a ZIP file of semi-aggregated data that will serve as input here.",
+      "fr": "Le résultat de ce processus est un fichier ZIP de données semi-agrégées qui servira d’entrée ici.",
+      "sp": "El resultado de este proceso es un archivo ZIP de datos semiagregados que servirá como entrada aquí."
+    },
+    {
+      "en": "Need help?",
+      "fr": "Besoin d’aide ?",
+      "sp": "¿Necesita ayuda?"
+    },
+    {
+      "en": "Tutorials, examples and additional resources can help you harness the analytical power of Arena Analytics.",
+      "fr": "Des tutoriels, des exemples et des ressources supplémentaires peuvent vous aider à exploiter la puissance analytique d’Arena Analytics.",
+      "sp": "Tutoriales, ejemplos y recursos adicionales pueden ayudarle a aprovechar el poder analítico de Arena Analytics."
+    },
+    {
+      "en": "The full package documentation, as well as case studies and tutorials have been developed to help you navigate through the dashboard capabilities.",
+      "fr": "La documentation complète du package, ainsi que des études de cas et des tutoriels ont été développés pour vous aider à naviguer dans les fonctionnalités du tableau de bord.",
+      "sp": "La documentación completa del paquete, así como estudios de caso y tutoriales, se han desarrollado para ayudarle a navegar por las capacidades del panel."
+    },
+    {
+      "en": "For more information, go to:",
+      "fr": "Pour plus d’informations, rendez-vous sur :",
+      "sp": "Para más información, vaya a:"
+    }
    ]
 }

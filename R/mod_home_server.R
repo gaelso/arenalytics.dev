@@ -11,6 +11,10 @@ mod_home_server <- function(id, rv) {
       rv$actions$to_tool <- input$to_tool
     })
 
+    observeEvent(input$to_tool2, {
+      rv$actions$to_tool2 <- input$to_tool2
+    })
+
     observeEvent(input$to_about, {
       rv$actions$to_about <- input$to_about
     })

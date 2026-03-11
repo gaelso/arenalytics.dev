@@ -50,7 +50,7 @@ shiny_run_arenalytics_dev <- function(...) {
       tags$a(
         href = "./", ## Send back to home page
         alt = "Arena Dashboard",
-        tags$img(src = "assets/logo.png", height = '40px'), ## CANNOT EXCEED 40px to avoid resizing issues (minor)
+        tags$img(src = "assets/logo.png", height = '40px', class = "navbar-logo"), ## CANNOT EXCEED 40px to avoid resizing issues (minor)
         .noWS = "before-end"
       ),
       i18n$t(.tr$app_title),
@@ -118,14 +118,19 @@ shiny_run_arenalytics_dev <- function(...) {
     shinyjs::useShinyjs(),
     shinyWidgets::useSweetAlert(),
     shiny.i18n::usei18n(i18n),
-    ## JS custom code
-    ## Handler to updateTabsetPanel()
-    ## While waiting for bslib::update_navs() to be included in bslib, it is not possible to use
-    ## updateTabsetPanel() in a module.
-    ## JS: receive message {id: "<ns-tool_tabs>", value: "res"} and click the matching element
-    tags$head(tags$script(src = "assets/js_activate_tab.js")),
-    ## CSS Style
-    tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "assets/style.css")),
+    tags$head(
+      ## JS custom handler to updateTabsetPanel()
+      tags$script(src = "assets/js_activate_tab.js"),
+      ## CSS Style
+      tags$link(rel = "stylesheet", type = "text/css", href = "assets/style.css"),
+      ## Favicons
+      tags$link(rel="icon", type="image/png", href="assets/favicon/favicon-96x96.png", sizes="96x96"),
+      tags$link(rel="icon", type="image/svg+xml", href="assets/favicon/favicon.svg"),
+      tags$link(rel="shortcut icon", href="assets/favicon/favicon.ico"),
+      tags$link(rel="apple-touch-icon", sizes="180x180", href="assets/favicon/apple-touch-icon.png"),
+      tags$meta(name="apple-mobile-web-app-title", content="Arena Analytics"),
+      tags$link(rel="manifest", href="assets/favicon/site.webmanifest"),
+    ),
     ## HTML Dependency - flag icons used for translation selector
     htmltools::htmlDependency(
       name = "flag-icons",
@@ -159,7 +164,7 @@ shiny_run_arenalytics_dev <- function(...) {
         title = i18n$t(.tr$nav_home),
         value = "home",
         #icon = icon("campground"),
-        mod_home_UI("tab_home", i18n = i18n)
+        mod_home_UI("tab_home", i18n = i18n, .tr = .tr)
       ),
 
       nav_panel(
@@ -216,6 +221,10 @@ shiny_run_arenalytics_dev <- function(...) {
     })
 
     observeEvent(rv$actions$to_tool, {
+      nav_select(id = "navbar", selected = "tool")
+    })
+
+    observeEvent(rv$actions$to_tool2, {
       nav_select(id = "navbar", selected = "tool")
     })
 

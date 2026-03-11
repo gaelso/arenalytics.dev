@@ -1,3 +1,4 @@
+
 /* Fix last menu item dropping on resizing with navbar-expand-sm */
 .navbar-nav {
   flex-wrap: nowrap;  /* prevent wrapping */
@@ -12,7 +13,7 @@
   z-index: 10000 !important;
 }
 
-/* Smooth scrolling + hero style + footer */
+/* Smooth scrolling  */
 html, body {
   height: 100%;
 }
@@ -25,6 +26,7 @@ html {
   scroll-behavior: smooth;
 }
 
+/* General CSS */
 body > .container-fluid {
   min-height: 100vh;
   display: flex;
@@ -34,62 +36,6 @@ body > .container-fluid {
 .bslib-page-navbar > .tab-content {
   flex: 1 0 auto;
 }
-
-.hero-section {
-  min-height: 75vh;
-  display: flex;
-  align-items: center;
-}
-
-.hero-title {
-  font-weight: 700;
-  font-size: 3rem;
-}
-
-.hero-subtitle {
-  font-size: 1.25rem;
-  color: #6c757d;
-}
-
-.hero-image {
-  max-height: 65vh;
-  width: 100%;
-  object-fit: cover;
-  border-radius: 1.5rem;
-}
-
-.feature-card {
-  transition: all 0.2s ease-in-out;
-  border-radius: 1rem;
-}
-
-.feature-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 1rem 2rem rgba(0,0,0,0.08);
-}
-
-.section-padding {
-  padding-top: 5rem;
-  padding-bottom: 5rem;
-}
-
-.footer {
-  margin-top: auto;
-  /*padding: 1.5rem 0;*/
-    border-top: 1px solid #e9ecef;
-  font-size: 0.9rem;
-  color: #6c757d;
-}
-
-.footer a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.footer a:hover {
-  text-decoration: underline;
-}
-
 
 
 /* Make buttons smaller */
@@ -137,3 +83,70 @@ body > .container-fluid {
 .bslib-value-box {
   container-name: none !important;
 }
+
+/* Specific CSS - Navbar Logo */
+.navbar-logo {
+  transition: transform 0.3s ease;
+}
+.navbar-logo:hover {
+  transform: rotate(360deg);
+}
+
+/* Specific CSS - Footer */
+.footer {
+  margin-top: auto;
+  /*padding: 1.5rem 0;*/
+    border-top: 1px solid #e9ecef;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+/* Specific CSS - Home page */
+.hero-section {
+  min-height: 75vh;
+  display: flex;
+  align-items: center;
+}
+
+.hero-title {
+  font-weight: 700;
+  font-size: 2.5rem;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: #6c757d;
+}
+
+.hero-image {
+  max-height: 65vh;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 1.5rem;
+}
+
+.feature-card {
+  transition: all 0.2s ease-in-out;
+  border-radius: 1rem;
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 1rem 2rem rgba(0,0,0,0.08);
+}
+
+.section-padding {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+
