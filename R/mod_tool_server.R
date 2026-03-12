@@ -50,14 +50,14 @@ mod_tool_server <- function(id, rv) {
     })
 
     ## + Acc1: read data ======
-    ## + + Show progress -----
+    ## . + Show progress -----
     ## Action: show progress in panel insights
     observeEvent(input$btn_read_data, {
 
       ## Hide/Show panels
       shinyjs::hide("panel_insight_msg")
       shinyjs::show("panel_insight_progress")
-      shinyjs::hide("readdata_panel_insights")
+      shinyjs::hide("panel_insights")
 
       ## Reset progress
       rv$inputs$data <- NULL
@@ -89,7 +89,7 @@ mod_tool_server <- function(id, rv) {
 
     })
 
-    ## + + Enable insight button -----
+    ## . + Enable insight button -----
     observe({
       req(rv$inputs$data_ok)
       if (rv$inputs$data_ok) {
@@ -99,19 +99,22 @@ mod_tool_server <- function(id, rv) {
       }
     })
 
-    ## + +  Show insights ------
+    ## . +  Show insights ------
     observeEvent(input$btn_data_insights, {
       req(rv$inputs$data)
 
       ## Hide progress and show insights
-      shinyjs::hide("readdata_panel_progress")
-      shinyjs::show("readdata_panel_insights")
+      shinyjs::hide("panel_insight_progress")
+      shinyjs::show("panel_insights")
     })
 
+    ## + Acc2: Insights ======
 
 
 
-    ## + Acc 4 ####
+
+    ## + Acc 4: crosstalk ======
+    ## + + Filter data ------
     observe({
       rv$rv1$user_iris <- datasets::iris |> # data("iris", envir = environment())
         dplyr::filter(is.null(input$species) | .data$Species %in% input$species) |>
@@ -122,17 +125,50 @@ mod_tool_server <- function(id, rv) {
       rv$rv1$shared_iris <- crosstalk::SharedData$new(rv$rv1$user_iris)
     })
 
-    ## Sidebar part 2 ######
+    ## + + Go to crosstalk panel ------
     observeEvent(input$btn_to_ctalk, {
       session$sendCustomMessage("activate-tab", list(id = ns("tool_tabs"), value = "tab_ctalk"))
+      session$sendCustomMessage("scroll_top", list())
     })
 
 
 
-    ## Main panels ######
+    ##
+    ## Panel outputs ######
+    ##
 
-    ## Virtual boxes ======
+    ## + Insights outputs ======
 
+    ## + + Survey title ------
+    output$insight_title <- renderText({
+      req(rv$inputs$data)
+      paste(
+        rv$inputs$data$chain_summary$surveyName,
+        rv$inputs$data$chain_summary$surveyLabel,
+        sep = " - "
+      )
+    })
+
+    output$insight_chain <- renderTable({
+      req(rv$inputs$data)
+
+      rv$inputs$data$chain_summary$resultVariables |>
+        dplyr::filter(active) |>
+        dplyr::group_by(entity, areaBased) |>
+        dplyr::summarise(n_var = dplyr::n(), .groups = "drop") |>
+        dplyr::mutate(areaBased = dplyr::if_else(areaBased, "areaBased", "notAreaBased")) |>
+        tidyr::pivot_wider(names_from = areaBased, values_from = n_var) |>
+        dplyr::mutate(
+          areaBased = dplyr::if_else(is.na(areaBased), 0, areaBased),
+          notAreaBased = dplyr::if_else(is.na(notAreaBased), 0, notAreaBased)
+        )
+
+    })
+
+
+    ## + crosstalk outputs ======
+
+    ## + + Virtual boxes ------
     output$vb_seplen_mean <- renderUI({
       fct_mean(.df = rv$rv1$user_iris, .colnum = .data$Sepal.Length, .rounding = 1)
     })
@@ -145,7 +181,7 @@ mod_tool_server <- function(id, rv) {
       length(unique(rv$rv1$user_iris$Species))
     })
 
-    ## Panel cards ======
+    ## + + Cards ------
     output$scatter1 <- d3scatter::renderD3scatter({
       d3scatter::d3scatter(rv$rv1$shared_iris, ~Petal.Length, ~Petal.Width, ~Species, width = "100%")
     })

@@ -20,7 +20,7 @@ mod_tool_UI <- function(id, i18n, .tr){
 
   ## + Sidebar ======
 
-  ## + + Acc1: Load data ------
+  ## . + Acc1: Load data ------
   ac1 <- accordion_panel(
     title = i18n$t(.tr$ac1_title),
     icon = bsicons::bs_icon("1-circle"),
@@ -33,8 +33,8 @@ mod_tool_UI <- function(id, i18n, .tr){
       fileInput(
         inputId = ns("load_zip"),
         accept = ".zip",
-        buttonLabel = i18n$t(.tr$ac1_input1),
-        placeholder = i18n$t(.tr$ac1_input2),
+        #buttonLabel = i18n$t(.tr$ac1_input1),
+        #placeholder = i18n$t(.tr$ac1_input2),
         label = NULL
       ),
       ## TEST alternative shinyFiles
@@ -90,7 +90,7 @@ mod_tool_UI <- function(id, i18n, .tr){
   )
 
 
-  ## + + Accordion 2 ---------------------------------------------------
+  ## . + Accordion 2 ---------------------------------------------------
   ac2 <-  accordion_panel(
     title = i18n$t("Get insights"),
     icon = bsicons::bs_icon("2-circle"),
@@ -98,21 +98,20 @@ mod_tool_UI <- function(id, i18n, .tr){
 
     ## Content
     div(
-      id = ns("msg_no_check"),
-      p("Suspendisse suscipit accumsan sagittis. Aliquam ut scelerisque mauris."),
+      id = ns("msg_tmp"),
+      p("Under construction"),
       class = "text-warning",
       style = "font-style: italic;"
     ),
+
     div(
-        actionButton(
-          inputId = ns("btn_panel2"),
-          label = "To Panel 2"
-        ),
-      style = "margin-top: 1rem;"
+      id = ns("insight_filters"),
+      uiOutput(outputId = ns("insight_entity")),
+      uiOutput(outputId = ns("insight_var"))
     )
   )
 
-  ## + + Accordion 3 -------------------------------------------
+  ## . + Accordion 3 -------------------------------------------
   ac3 <-  accordion_panel(
     title = i18n$t("Run analysis"),
     icon = bsicons::bs_icon("3-circle"),
@@ -122,7 +121,7 @@ mod_tool_UI <- function(id, i18n, .tr){
     h4("coming soon")
   )
 
-  ## + + Acc4: test crosstalk --------
+  ## . + Acc4: test crosstalk --------
   ac4 <-  accordion_panel(
     title = "Test Crosstalk",
     icon = bsicons::bs_icon("3-circle"),
@@ -146,8 +145,8 @@ mod_tool_UI <- function(id, i18n, .tr){
 
   ## + Panels UI ======
 
-  ## + + Insights elements ------
-  ## + + + Initial message ------
+  ## . + Insights elements ------
+  ## . . + Initial message ------
   insight_msg <- div(
     id = ns("panel_insight_msg"),
     bsicons::bs_icon("arrow-left"), " Start with uploading your OLAP zipfile in the sidebar.",
@@ -155,7 +154,7 @@ mod_tool_UI <- function(id, i18n, .tr){
     style = "font-style: italic;"
   )
 
-  ## \___ Read progress ------
+  ## . . + Read progress ------
   insight_progress <- shinyjs::hidden(div(
     id = ns("panel_insight_progress"),
     h3("Reading Data"),
@@ -177,27 +176,26 @@ mod_tool_UI <- function(id, i18n, .tr){
     )
   ))
 
-  ## \___ Data insights -----
-  insight_title <- tags$h5(
-    tags$strong("Survey name: "), textOutput(ns("readdata_insight_title"), inline = TRUE)
+  ## . . + Data insights -----
+  insight_p_title <- tags$h5(
+    tags$span("Survey name: ", style = "font-weight:700;"), textOutput(ns("insight_title"), inline = TRUE)
   )
 
-  insight_subtitle <- div(
-    style = "font-style: italic;",
-    textOutput(ns("readdata_insight_subtitle"))
+  insight_tab_chain <- card(
+    h5("Number of results variables per Entity"),
+    tableOutput(outputId = ns("insight_chain"))
   )
 
-  insights <- shinyjs::hidden(div(
-    id = ns("readdata_panel_insights"),
-    tags$h3("Data insights"),
-    insight_title,
-    insight_subtitle
-  ))
+  insight_out_summary <- card(
+    h5("Summary of the selected numerical results variables"),
+    verbatimTextOutput(outputId = ns("insight_summary"))
+  )
 
-  ## \__ Panel: analysis ==========
+
+  ## . + Panel: analysis ------
   ## Statistical analysis
 
-  ## + + Panel crosstalk ------
+  ## . + Panel crosstalk ------
 
   ## Value boxes
   vb1 <- value_box(
@@ -247,7 +245,7 @@ mod_tool_UI <- function(id, i18n, .tr){
 
   tagList(
 
-    h2(i18n$t("TOOL")),
+    #h2(i18n$t("TOOL")),
 
     br(),
 
@@ -274,8 +272,12 @@ mod_tool_UI <- function(id, i18n, .tr){
         icon = icon("circle-check"),
         insight_msg,
         insight_progress,
-        insights
-
+        shinyjs::hidden(div(
+          id = ns("panel_insights"),
+          tags$h3("Data insights"),
+          insight_p_title,
+          layout_column_wrap(insight_tab_chain, insight_out_summary, width = "300px")
+        ))
       ),
 
       ## + panel 2===========================================================
