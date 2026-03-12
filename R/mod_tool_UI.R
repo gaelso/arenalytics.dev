@@ -90,7 +90,7 @@ mod_tool_UI <- function(id, i18n, .tr){
   )
 
 
-  ## . + Accordion 2 ---------------------------------------------------
+  ## . + Acc2: Insights --------
   ac2 <-  accordion_panel(
     title = i18n$t("Get insights"),
     icon = bsicons::bs_icon("2-circle"),

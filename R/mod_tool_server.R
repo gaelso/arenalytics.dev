@@ -109,6 +109,29 @@ mod_tool_server <- function(id, rv) {
     })
 
     ## + Acc2: Insights ======
+    ## . + Create labels for pickerInput() ------
+    observe({
+      req(rv$inputs$data)
+
+      if (length(names(rv$inputs$data)) > 0) {
+        rv$insights$entities <- names(rv$inputs$data) |> stringr::str_subset("OLAP_")
+        rv$insights$entities_labs <- rv$insights$entities |> stringr::str_remove("OLAP_")
+        rv$insights$entities_named <- setNames(rv$insights$entities, rv$insights$entities_labs)
+      } else {
+        rv$insights$entities_named <- NULL
+      }
+
+    })
+
+    output$insight_entity <- renderUI({
+      req(rv$inputs$data, rv$insights$entities_named)
+      selectInput(
+        inputId = ns("insight_sel_entity"),
+        label = "Entities",
+        choices = rv$insights$entities_named,
+        multiple = FALSE
+        )
+    })
 
 
 
@@ -116,13 +139,13 @@ mod_tool_server <- function(id, rv) {
     ## + Acc 4: crosstalk ======
     ## + + Filter data ------
     observe({
-      rv$rv1$user_iris <- datasets::iris |> # data("iris", envir = environment())
+      rv$ct$user_iris <- datasets::iris |> # data("iris", envir = environment())
         dplyr::filter(is.null(input$species) | .data$Species %in% input$species) |>
         dplyr::filter(
           .data$Petal.Length >= min(input$petal_length),
           .data$Petal.Length<= max(input$petal_length)
         )
-      rv$rv1$shared_iris <- crosstalk::SharedData$new(rv$rv1$user_iris)
+      rv$ct$shared_iris <- crosstalk::SharedData$new(rv$ct$user_iris)
     })
 
     ## + + Go to crosstalk panel ------
@@ -139,7 +162,7 @@ mod_tool_server <- function(id, rv) {
 
     ## + Insights outputs ======
 
-    ## + + Survey title ------
+    ## . + Survey title ------
     output$insight_title <- renderText({
       req(rv$inputs$data)
       paste(
@@ -149,6 +172,7 @@ mod_tool_server <- function(id, rv) {
       )
     })
 
+    ## . + Variables ------
     output$insight_chain <- renderTable({
       req(rv$inputs$data)
 
@@ -165,33 +189,40 @@ mod_tool_server <- function(id, rv) {
 
     })
 
+    output$insight_summary <- renderPrint({
+      req(rv$inputs$data, rv$insights$entities_named)
+
+      rv$insights$entities_named
+      #summary(rv$inputs$data[[input$insight_sel_entity]])
+
+    })
 
     ## + crosstalk outputs ======
 
     ## + + Virtual boxes ------
     output$vb_seplen_mean <- renderUI({
-      fct_mean(.df = rv$rv1$user_iris, .colnum = .data$Sepal.Length, .rounding = 1)
+      fct_mean(.df = rv$ct$user_iris, .colnum = .data$Sepal.Length, .rounding = 1)
     })
 
     output$vb_sepwid_mean <- renderUI({
-      fct_mean(.df = rv$rv1$user_iris, .colnum = .data$Sepal.Width, .rounding = 1)
+      fct_mean(.df = rv$ct$user_iris, .colnum = .data$Sepal.Width, .rounding = 1)
     })
 
     output$vb_nb_species <- renderUI({
-      length(unique(rv$rv1$user_iris$Species))
+      length(unique(rv$ct$user_iris$Species))
     })
 
     ## + + Cards ------
     output$scatter1 <- d3scatter::renderD3scatter({
-      d3scatter::d3scatter(rv$rv1$shared_iris, ~Petal.Length, ~Petal.Width, ~Species, width = "100%")
+      d3scatter::d3scatter(rv$ct$shared_iris, ~Petal.Length, ~Petal.Width, ~Species, width = "100%")
     })
 
     output$scatter2 <- d3scatter::renderD3scatter({
-      d3scatter::d3scatter(rv$rv1$shared_iris, ~Sepal.Length, ~Sepal.Width, ~Species, width = "100%")
+      d3scatter::d3scatter(rv$ct$shared_iris, ~Sepal.Length, ~Sepal.Width, ~Species, width = "100%")
     })
 
     output$summary <- renderPrint({
-      df <- rv$rv1$shared_iris$data(withSelection = TRUE) |>
+      df <- rv$ct$shared_iris$data(withSelection = TRUE) |>
         dplyr::filter(.data$selected_ | is.na(.data$selected_)) |>
         dplyr::mutate(selected_ = NULL)
 

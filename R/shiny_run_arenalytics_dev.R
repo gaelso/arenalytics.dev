@@ -201,9 +201,10 @@ shiny_run_arenalytics_dev <- function(...) {
     ## + Initiate reactive values list to be passed between modules ####
     ## See https://rtask.thinkr.fr/communication-between-modules-and-its-whims/
     rv <- reactiveValues(
-      rv1     = reactiveValues(),
-      rv2     = reactiveValues(),
-      actions = reactiveValues()
+      inputs   = reactiveValues(),
+      insights = reactiveValues(),
+      ct       = reactiveValues(),
+      actions  = reactiveValues()
     )
 
     ## Save language value to show/hide divs with shinyjs
