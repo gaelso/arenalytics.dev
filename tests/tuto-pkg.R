@@ -76,3 +76,7 @@
 #     )
 #   })
 # }
+#
+# ## Run often
+# devtools::install()
+# devtools::load_all() ; shiny_run_arenalytics_dev()
