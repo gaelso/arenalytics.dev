@@ -192,8 +192,8 @@ mod_tool_server <- function(id, rv) {
     output$insight_summary <- renderPrint({
       req(rv$inputs$data, rv$insights$entities_named)
 
-      rv$insights$entities_named
-      #summary(rv$inputs$data[[input$insight_sel_entity]])
+      #rv$insights$entities_named
+      summary(rv$inputs$data[[input$insight_sel_entity]])
 
     })
 
