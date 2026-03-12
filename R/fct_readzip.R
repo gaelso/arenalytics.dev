@@ -60,7 +60,7 @@ fct_readzip <- function(.path, .pb_session = NULL, .pb_id = NULL){
       )
     }
 
-    Sys.sleep(0.2)
+    Sys.sleep(0.1)
 
     tt
 
