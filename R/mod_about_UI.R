@@ -1,5 +1,5 @@
 
-mod_about_UI <- function(id, i18n){
+mod_about_UI <- function(id, i18n, .tr){
 
   ## From https://shiny.rstudio.com/articles/modules.html
   # `NS(id)` returns a namespace function, which was save as `ns` and will

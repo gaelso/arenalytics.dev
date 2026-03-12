@@ -1,11 +1,15 @@
 {
   "cultural_date_format": "%d-%m-%Y",
-  "languages": ["en", "fr", "sp"],
+  "languages": [
+    "en",
+    "fr",
+    "sp"
+  ],
   "translation": [
     {
-    "en": "Analytical Dashboard for OpenForis Arena",
-    "fr": "Mon tableau de bord",
-    "sp": "Mi panel analítico"
+      "en": "Analytical Dashboard for OpenForis Arena",
+      "fr": "Mon tableau de bord",
+      "sp": "Mi panel analítico"
     },
     {
       "en": "Home",
@@ -23,41 +27,41 @@
       "sp": "Acerca de"
     },
     {
-    "en": "Powerful analytics for your OpenForis Arena data",
-    "fr": "Une façon plus intelligente d'explorer les données",
-    "sp": "Una forma más inteligente de explorar datos"
-  },
-  {
-    "en": "Explore your data from OpenForis Arena, gain insights and develop report-ready figures and statistics.",
-    "fr": "Transformez des données complexes en informations claires grâce à une interface belle et intuitive.",
-    "sp": "Transforma datos complejos en información clara con una interfaz hermosa e intuitiva."
-  },
-  {
-    "en": "Get Started",
-    "fr": "Commencer",
-    "sp": "Comenzar"
-  },
-  {
-    "en": "A dashboard shinyApp, arenalytics, shipped as a R package, unlocking the powerful statistics of R with the visual convenience of dashboards.",
-    "fr": "Une application dashboard shinApp, fournie comme un package R, exploitant la puissance statistique de R avec la commodité visuelle des tableaux de bord.",
-    "sp": "Un shinApp de panel, distribuido como un paquete R, desbloqueando la potente estadística de R con la conveniencia visual de los paneles."
-  },
-  {
-    "en": "For more details about the app developement or if any issue, find us on:",
-    "fr": "Pour plus de détails sur le développement de l'application ou en cas de problème, retrouvez-nous sur :",
-    "sp": "Para más detalles sobre el desarrollo de la aplicación o si hay algún problema, encuéntrenos en:"
-  },
-  {
-    "en": "Start playing with your data:",
-    "fr": "Commencez à explorer vos données :",
-    "sp": "Comience a explorar sus datos:"
-  },
-  {
-    "en": "Here",
-    "fr": "Ici",
-    "sp": "Aquí"
-  },
-  {
+      "en": "Powerful analytics for your OpenForis Arena data",
+      "fr": "Une façon plus intelligente d'explorer les données",
+      "sp": "Una forma más inteligente de explorar datos"
+    },
+    {
+      "en": "Explore your data from OpenForis Arena, gain insights and develop report-ready figures and statistics.",
+      "fr": "Transformez des données complexes en informations claires grâce à une interface belle et intuitive.",
+      "sp": "Transforma datos complejos en información clara con una interfaz hermosa e intuitiva."
+    },
+    {
+      "en": "Get Started",
+      "fr": "Commencer",
+      "sp": "Comenzar"
+    },
+    {
+      "en": "A dashboard shinyApp, arenalytics, shipped as a R package, unlocking the powerful statistics of R with the visual convenience of dashboards.",
+      "fr": "Une application dashboard shinApp, fournie comme un package R, exploitant la puissance statistique de R avec la commodité visuelle des tableaux de bord.",
+      "sp": "Un shinApp de panel, distribuido como un paquete R, desbloqueando la potente estadística de R con la conveniencia visual de los paneles."
+    },
+    {
+      "en": "For more details about the app developement or if any issue, find us on:",
+      "fr": "Pour plus de détails sur le développement de l'application ou en cas de problème, retrouvez-nous sur :",
+      "sp": "Para más detalles sobre el desarrollo de la aplicación o si hay algún problema, encuéntrenos en:"
+    },
+    {
+      "en": "Start playing with your data:",
+      "fr": "Commencez à explorer vos données :",
+      "sp": "Comience a explorar sus datos:"
+    },
+    {
+      "en": "Here",
+      "fr": "Ici",
+      "sp": "Aquí"
+    },
+    {
       "en": "Arena Analytics is tailored to work with",
       "fr": "Arena Analytics est conçu pour fonctionner avec",
       "sp": "Arena Analytics está diseñado para funcionar con"
@@ -91,6 +95,46 @@
       "en": "For more information, go to:",
       "fr": "Pour plus d’informations, rendez-vous sur :",
       "sp": "Para más información, vaya a:"
+    },
+    {
+      "en": "Load ZIP file",
+      "fr": "FR-Load ZIP file",
+      "sp": "SP-Load ZIP file"
+    },
+    {
+      "en": "The dashboard requires a ZIP file that is produced by running the processing chain from your OpenForis Arena survey in Rstudio (local or online).",
+      "fr": "FR-The dashboard requires a ZIP file that is produced by running the processing chain from your OpenForis Arena survey in Rstudio (local or online).",
+      "sp": "SP-The dashboard requires a ZIP file that is produced by running the processing chain from your OpenForis Arena survey in Rstudio (local or online)."
+    },
+    {
+      "en": "Once this file is produced, upload here:",
+      "fr": "FR-Once this file is produced, upload here:",
+      "sp": "SP-Once this file is produced, upload here:"
+    },
+    {
+      "en": "Browse...",
+      "fr": "FR-Browse...",
+      "sp": "SP-Browse..."
+    },
+    {
+      "en": "No file selected",
+      "fr": "FR-No file selected",
+      "sp": "SP-No file selected"
+    },
+    {
+      "en": "No data uploaded.",
+      "fr": "FR-No data uploaded.",
+      "sp": "SP-No data uploaded."
+    },
+    {
+      "en": "Data structure OK.",
+      "fr": "FR-Data structure OK.",
+      "sp": "SP-Data structure OK."
+    },
+    {
+      "en": "Read data",
+      "fr": "FR-Read data",
+      "sp": "SP-Read data"
     }
-   ]
+  ]
 }

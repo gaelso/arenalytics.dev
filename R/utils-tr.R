@@ -29,7 +29,19 @@
     feat3_p1 = "Tutorials, examples and additional resources can help you harness the analytical power of Arena Analytics.",
     feat3_p2 = "The full package documentation, as well as case studies and tutorials have been developed to help you navigate through the dashboard capabilities.",
     feat3_p3 = "For more information, go to:",
-    feat3_btn = "About" ## Not pasted twice in assets/translations.json
+    feat3_btn = "About", ## Not pasted twice in assets/translations.json
+
+    ## Tool UI
+    ac1_title = "Load ZIP file",
+    ac1_p1 = "The dashboard requires a ZIP file that is produced by running the processing chain from your OpenForis Arena survey in Rstudio (local or online).",
+    ac1_p2 = "Once this file is produced, upload here:",
+    ac1_input1 = "Browse...",
+    ac1_input2 = "No file selected",
+    ac1_msg_nodata = "No data uploaded.",
+    ac1_msg_ok = "Data structure OK.",
+    ac1_msg_err = "Incorrect data uploaded.",
+    ac1_btn = "Read data"
+
 
 
 

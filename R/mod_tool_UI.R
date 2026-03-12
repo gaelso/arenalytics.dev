@@ -1,44 +1,98 @@
 #' Tool module UI function
 #'
 #' @noRd
-mod_tool_UI <- function(id, i18n){
+mod_tool_UI <- function(id, i18n, .tr){
 
   ## From https://shiny.rstudio.com/articles/modules.html
   # `NS(id)` returns a namespace function, which was save as `ns` and will
   # invoke later.
   ns <- NS(id)
 
+
+
   ##
-  ## UI Elements ###############################################################
+  ## UI Elements ######
   ##
 
-  ## + Sidebar =================================================================
+  ## 3 parts sidebar: Load data, Get insights, Get analysis results
+  ## 2 panels: Insights and Analysis
 
-  ## ++ Accordion 1 -------------------------------------------------
+
+  ## + Sidebar ======
+
+  ## + + Acc1: Load data ------
   ac1 <- accordion_panel(
-    title = i18n$t("Action 1"),
+    title = i18n$t(.tr$ac1_title),
     icon = bsicons::bs_icon("1-circle"),
-    value = ns("ac1"),
+    value = ns("ac_load"),
 
-    ## Accordion content
+    ## Input ZIP file
     div(
-      p(
-        "Fusce vitae ante non turpis rutrum varius. Curabitur pulvinar lacinia velit,
-        ut pellentesque lectus facilisis vitae."
+      p(i18n$t(.tr$ac1_p1)),
+      p(i18n$t(.tr$ac1_p2)),
+      fileInput(
+        inputId = ns("load_zip"),
+        accept = ".zip",
+        buttonLabel = i18n$t(.tr$ac1_input1),
+        placeholder = i18n$t(.tr$ac1_input2),
+        label = NULL
       ),
-      selectInput(ns("species"), "Species", levels(datasets::iris$Species), multiple = TRUE),
-      sliderInput(
-        ns("petal_length"), "Petal Length",
-        min = min(datasets::iris$Petal.Length), max = max(datasets::iris$Petal.Length),
-        value = c(min(datasets::iris$Petal.Length), max(datasets::iris$Petal.Length))
-      )
+      ## TEST alternative shinyFiles
+      ## !!! Package old and not maintained
+      # br(),
+      # p(
+      #   "The dashboard requires a ZIP file that is produced by running the processing
+      #   chain from your OF Arena survey in Rstudio (local or online). Once this file
+      #   is produced, extract the data and point to its location here, so that the app
+      #   can automatically find the data and structure files:"
+      # ),
+      #
+      # shinyFiles::shinyDirButton(
+      #   id = ns('path_to_folder'),
+      #   label = 'Select a folder',
+      #   title = 'Please select a folder',
+      #   FALSE
+      # )
+    ),
+
+    ## MESSAGES
+    div(
+      id = ns("msg_no_file"),
+      i18n$t(.tr$ac1_msg_nodata),
+      class = "text-warning",
+      style = "font-style: italic;"
+    ),
+    shinyjs::hidden(div(
+      id = ns("msg_file_ok"),
+      i18n$t(.tr$ac1_msg_ok),
+      class = "text-success",
+      style = "font-style: italic;"
+    )),
+    shinyjs::hidden(div(
+      id = ns("msg_file_error"),
+      i18n$t(.tr$ac1_msg_err),
+      verbatimTextOutput(ns("file_error_detail")),
+      class = "text-danger",
+      style = "font-style: italic;"
+    )),
+
+    ## ACTION BUTTON
+    div(
+      shinyjs::disabled(
+        actionButton(
+          inputId = ns("btn_read_data"),
+          label = i18n$t(.tr$ac1_btn)
+        )
+      ),
+      style = "margin-top: 1rem;"
     )
+
   )
 
 
-  ## ++ Accordion 2 ---------------------------------------------------
+  ## + + Accordion 2 ---------------------------------------------------
   ac2 <-  accordion_panel(
-    title = i18n$t("Action 2"),
+    title = i18n$t("Get insights"),
     icon = bsicons::bs_icon("2-circle"),
     value = ns("ac2"),
 
@@ -58,9 +112,9 @@ mod_tool_UI <- function(id, i18n){
     )
   )
 
-  ## ++ Accordion 3 -------------------------------------------
+  ## + + Accordion 3 -------------------------------------------
   ac3 <-  accordion_panel(
-    title = i18n$t("Action 3"),
+    title = i18n$t("Run analysis"),
     icon = bsicons::bs_icon("3-circle"),
     value = ns("ac3"),
 
@@ -68,9 +122,84 @@ mod_tool_UI <- function(id, i18n){
     h4("coming soon")
   )
 
-  ## + Main panel 1 ============================================================
+  ## + + Acc4: test crosstalk --------
+  ac4 <-  accordion_panel(
+    title = "Test Crosstalk",
+    icon = bsicons::bs_icon("3-circle"),
+    value = ns("ac3"),
 
-  ## ++ Value boxes ------------------------------------------------------------
+    ## Content
+    selectInput(ns("species"), "Species", levels(datasets::iris$Species), multiple = TRUE),
+    sliderInput(
+      ns("petal_length"), "Petal Length",
+      min = min(datasets::iris$Petal.Length), max = max(datasets::iris$Petal.Length),
+      value = c(min(datasets::iris$Petal.Length), max(datasets::iris$Petal.Length))
+    ),
+    div(
+      actionButton(
+        inputId = ns("btn_to_ctalk"),
+        label = "To Test Panel"
+      ),
+      style = "margin-top: 1rem;"
+    )
+  )
+
+  ## + Panels UI ======
+
+  ## + + Insights elements ------
+  ## + + + Initial message ------
+  insight_msg <- div(
+    id = ns("panel_insight_msg"),
+    bsicons::bs_icon("arrow-left"), " Start with uploading your OLAP zipfile in the sidebar.",
+    class = "text-warning",
+    style = "font-style: italic;"
+  )
+
+  ## \___ Read progress ------
+  insight_progress <- shinyjs::hidden(div(
+    id = ns("panel_insight_progress"),
+    h3("Reading Data"),
+    shinyWidgets::progressBar(
+      id = ns("readdata_progress"),
+      value = 0,
+      title = "Reading data",
+      display_pct = TRUE
+    ),
+    br(),
+    div(
+      id = ns("readdata_console"),
+      style =
+        "height: 200px; overflow-y: auto; background-color:#f7f7f7; font-family:monospace; font-size: small;"
+    ),
+    br(),
+    shinyjs::disabled(
+      actionButton(inputId = ns("btn_data_insights"), label = "Show data insights")
+    )
+  ))
+
+  ## \___ Data insights -----
+  insight_title <- tags$h5(
+    tags$strong("Survey name: "), textOutput(ns("readdata_insight_title"), inline = TRUE)
+  )
+
+  insight_subtitle <- div(
+    style = "font-style: italic;",
+    textOutput(ns("readdata_insight_subtitle"))
+  )
+
+  insights <- shinyjs::hidden(div(
+    id = ns("readdata_panel_insights"),
+    tags$h3("Data insights"),
+    insight_title,
+    insight_subtitle
+  ))
+
+  ## \__ Panel: analysis ==========
+  ## Statistical analysis
+
+  ## + + Panel crosstalk ------
+
+  ## Value boxes
   vb1 <- value_box(
     title = "Sepal Mean length",
     value = htmlOutput(ns("vb_seplen_mean")),
@@ -92,8 +221,7 @@ mod_tool_UI <- function(id, i18n){
     theme = "warning"
   )
 
-
-  ## ++ cards ------------------------------------------------------------------
+  ## Cards
   card1 <- card(
     full_screen = T,
     h5(i18n$t("Scatter 1")),
@@ -126,26 +254,45 @@ mod_tool_UI <- function(id, i18n){
     navset_card_tab(
       id = ns("tool_tabs"),
 
-      ## + Sidebar =============================================================
-
+      ## + Sidebar =====
       sidebar = sidebar(
         width = "300px",
         accordion(
           open = TRUE,
           multiple = TRUE,
-          ac1, ac2, ac3
+          ac1, ac2, ac3, ac4
         )
       ),
 
       ## Spacer to right align menu items
       nav_spacer(),
 
-      ## + Main panel 1 ========================================================
+      ## + Panel insights ===========
+      nav_panel(
+        title = i18n$t("Insights"),
+        value = "tab_insights",
+        icon = icon("circle-check"),
+        insight_msg,
+        insight_progress,
+        insights
+
+      ),
+
+      ## + panel 2===========================================================
 
       nav_panel(
-        title = i18n$t("Panel 1"),
-        value = "tab1",
-        icon = icon("circle-check"),
+        title = i18n$t("Analysis"),
+        value = "tab2",
+        icon = icon("chart-simple"),
+
+      ),
+
+      ## + crosstalk panel =========
+
+      nav_panel(
+        title = "crosstalk",
+        value = "tab_ctalk",
+        icon = icon("magnifying-glass"),
         ## Value boxes
         div(
           id = ns("vb_section"),
@@ -161,24 +308,6 @@ mod_tool_UI <- function(id, i18n){
           layout_column_wrap(card1, card2, width = "300px"),
           card3
         )
-      ),
-
-      ## + panel 2===========================================================
-
-      nav_panel(
-        title = i18n$t("Panel 2"),
-        value = "tab2",
-        icon = icon("chart-simple"),
-
-      ),
-
-      ## + panel 3 ============================================
-
-      nav_panel(
-        title = i18n$t("Panel 3"),
-        value = "tab3",
-        icon = icon("magnifying-glass"),
-
       )
 
     ) ## END navset_card_tab()

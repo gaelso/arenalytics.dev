@@ -9,7 +9,109 @@ mod_tool_server <- function(id, rv) {
 
     ns <- session$ns
 
-    ## Sidebar part 1 ######
+    ## !!! FOR TESTING ONLY
+    # rv <- list()
+    # rv$inputs <- list()
+    # rv$inputs$path_zip <- system.file("extdata/OLAP_Shiny_demo_broken.zip", package = "arenalytics")
+    # rv$inputs$check_zip <- fct_checkzip(.path = rv$inputs$path_zip)
+    ## !!!
+
+    ##
+    ## Accordions outputs and events ######
+    ##
+
+    ## + Acc1: check data ======
+    ## Action 1: (1) check data files list, (2) update message and (3) active read button
+    observeEvent(input$load_zip, {
+
+      rv$inputs$path_zip <- input$load_zip$datapath
+      rv$inputs$check_zip <- fct_checkzip(.path = rv$inputs$path_zip)
+
+      if(rv$inputs$check_zip$all_ok) {
+        shinyjs::hide("msg_no_file")
+        shinyjs::show("msg_file_ok")
+        shinyjs::hide("msg_file_error")
+        shinyjs::enable("btn_read_data")
+      } else {
+        shinyjs::hide("msg_no_file")
+        shinyjs::hide("msg_file_ok")
+        shinyjs::show("msg_file_error")
+        shinyjs::disable("btn_read_data")
+      }
+
+    })
+
+    output$file_error_detail <- renderPrint({
+      req(rv$inputs$check_zip)
+      # if(!rv$inputs$check_zip$all_ok) data.frame(res = unlist(rv$inputs$check_zip))
+      if(!rv$inputs$check_zip$all_ok) {
+        cat("Missing files:\n", paste(rv$inputs$check_zip$missing, collapse = ", "))
+      }
+    })
+
+    ## + Acc1: read data ======
+    ## + + Show progress -----
+    ## Action: show progress in panel insights
+    observeEvent(input$btn_read_data, {
+
+      ## Hide/Show panels
+      shinyjs::hide("panel_insight_msg")
+      shinyjs::show("panel_insight_progress")
+      shinyjs::hide("readdata_panel_insights")
+
+      ## Reset progress
+      rv$inputs$data <- NULL
+      rv$inputs$data_ok <- FALSE
+      shinyjs::html("readdata_console", "")  # clear on restart
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "readdata_progress",
+        value = 0
+      )
+      shinyjs::disable("btn_data_insights")
+
+      Sys.sleep(0.4)
+
+      ## Read data and update progress
+      rv$inputs$data <- withCallingHandlers(
+        {
+          fct_readzip(
+            .path = rv$inputs$path_zip, .pb_session = session, .pb_id = "readdata_progress"
+          )
+        },
+        message = function(m) {
+          shinyjs::html(id = "readdata_console", html = paste0(m$message, '<br>'), add = TRUE)
+          invokeRestart("muffleMessage")
+        }
+      )
+      ## Make insight button visible (to be improved)
+      if (!is.null(rv$inputs$data)) rv$inputs$data_ok <- TRUE
+
+    })
+
+    ## + + Enable insight button -----
+    observe({
+      req(rv$inputs$data_ok)
+      if (rv$inputs$data_ok) {
+        shinyjs::enable("btn_data_insights")
+      } else {
+        shinyjs::disable("btn_data_insights")
+      }
+    })
+
+    ## + +  Show insights ------
+    observeEvent(input$btn_data_insights, {
+      req(rv$inputs$data)
+
+      ## Hide progress and show insights
+      shinyjs::hide("readdata_panel_progress")
+      shinyjs::show("readdata_panel_insights")
+    })
+
+
+
+
+    ## + Acc 4 ####
     observe({
       rv$rv1$user_iris <- datasets::iris |> # data("iris", envir = environment())
         dplyr::filter(is.null(input$species) | .data$Species %in% input$species) |>
@@ -21,8 +123,8 @@ mod_tool_server <- function(id, rv) {
     })
 
     ## Sidebar part 2 ######
-    observeEvent(input$btn_panel2, {
-      session$sendCustomMessage("activate-tab", list(id = ns("tool_tabs"), value = "tab2"))
+    observeEvent(input$btn_to_ctalk, {
+      session$sendCustomMessage("activate-tab", list(id = ns("tool_tabs"), value = "tab_ctalk"))
     })
 
 

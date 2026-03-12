@@ -171,14 +171,14 @@ shiny_run_arenalytics_dev <- function(...) {
         title = i18n$t(.tr$nav_tool),
         value = "tool",
         #icon = icon("mug-hot"),
-        mod_tool_UI("tab_tool", i18n = i18n)
+        mod_tool_UI("tab_tool", i18n = i18n, .tr = .tr)
       ),
 
       nav_panel(
         title = i18n$t(.tr$nav_about),
         value = "about",
        #icon = icon("info"),
-        mod_about_UI("tab_about", i18n = i18n)
+        mod_about_UI("tab_about", i18n = i18n, .tr = tr)
       ),
 
       nav_item(language_selector)
