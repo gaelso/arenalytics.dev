@@ -121,6 +121,7 @@ shiny_run_arenalytics_dev <- function(...) {
     tags$head(
       ## JS custom handler to updateTabsetPanel()
       tags$script(src = "assets/js_activate_tab.js"),
+      tags$script(src = "assets/js_handlers.js"),
       ## CSS Style
       tags$link(rel = "stylesheet", type = "text/css", href = "assets/style.css"),
       ## Favicons
@@ -226,10 +227,12 @@ shiny_run_arenalytics_dev <- function(...) {
 
     observeEvent(rv$actions$to_tool2, {
       nav_select(id = "navbar", selected = "tool")
+      session$sendCustomMessage("scroll_top", list()) ## Go to top of the page
     })
 
     observeEvent(rv$actions$to_about, {
       nav_select(id = "navbar", selected = "about")
+      session$sendCustomMessage("scroll_top", list())
     })
 
 
