@@ -107,7 +107,7 @@ mod_tool_UI <- function(id, i18n, .tr){
     div(
       id = ns("insight_filters"),
       uiOutput(outputId = ns("insight_entity")),
-      uiOutput(outputId = ns("insight_var"))
+      uiOutput(outputId = ns("insight_vars"))
     )
   )
 
@@ -272,10 +272,12 @@ mod_tool_UI <- function(id, i18n, .tr){
         icon = icon("circle-check"),
         insight_msg,
         insight_progress,
+        br(),
         shinyjs::hidden(div(
           id = ns("panel_insights"),
           tags$h3("Data insights"),
           insight_p_title,
+          br(),
           layout_column_wrap(insight_tab_chain, insight_out_summary, width = "300px")
         ))
       ),

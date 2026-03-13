@@ -123,6 +123,25 @@ mod_tool_server <- function(id, rv) {
 
     })
 
+    observeEvent(input$insight_sel_entity, {
+      req(rv$inputs$data$SchemaSummary, rv$inputs$data$chain_summary)
+
+      rv$insights$vars <- rv$inputs$data$chain_summary$resultVariables |>
+        dplyr::filter(entity == stringr::str_remove(input$insight_sel_entity, "OLAP_")) |>
+        dplyr::filter(areaBased)
+      rv$insights$vars_named <- setNames(rv$insights$vars$name, rv$insights$vars$label)
+
+      ## USING SchemaSummary - WRONG, should use chain_summary$resultVariables
+      # rv$insights$vars <- rv$inputs$data$SchemaSummary |>
+      #   dplyr::filter(parentEntity == stringr::str_remove(input$insight_sel_entity, "OLAP_")) |>
+      #   dplyr::filter(type != "text") |>
+      #   dplyr::select(name, paste0("label_", rv$inputs$data$chain_summary$selectedLanguage))
+      #   # dplyr::select(name, paste0("label_", i18n$get_translation_language())) ## Get app language to set label
+      # rv$insights$vars_named <- setNames(rv$insights$vars[[1]], rv$insights$vars[[2]])
+
+    })
+
+    ## . + Make pickerInput ------
     output$insight_entity <- renderUI({
       req(rv$inputs$data, rv$insights$entities_named)
       selectInput(
@@ -133,7 +152,16 @@ mod_tool_server <- function(id, rv) {
         )
     })
 
-
+    output$insight_vars <- renderUI({
+      req(rv$inputs$data, rv$insights$vars_named)
+      selectInput(
+        inputId = ns("insight_sel_vars"),
+        label = "Area-based Variables",
+        choices = rv$insights$vars_named,
+        selected = rv$insights$vars_named,
+        multiple = TRUE
+      )
+    })
 
 
     ## + Acc 4: crosstalk ======
@@ -190,10 +218,14 @@ mod_tool_server <- function(id, rv) {
     })
 
     output$insight_summary <- renderPrint({
-      req(rv$inputs$data, rv$insights$entities_named)
+      req(
+        rv$inputs$data, input$insight_sel_entity, input$insight_sel_vars,
+        input$insight_sel_vars %in% names(rv$inputs$data[[input$insight_sel_entity]])
+        )
 
-      #rv$insights$entities_named
-      summary(rv$inputs$data[[input$insight_sel_entity]])
+      # rv$insights$entities_named
+      # rv$insights$vars_named
+      summary(rv$inputs$data[[input$insight_sel_entity]][,input$insight_sel_vars])
 
     })
 
