@@ -1,9 +1,8 @@
-#' TITLE
+#' Analytical Dashboard for OpenForis Arena
 #'
-#' @description Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec vehicula
-#'              imperdiet finibus. Sed urna sem, molestie at sodales non, viverra vitae
-#'              mauris. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque
-#'              convallis tristique mauris, nec volutpat ligula dapibus eget.
+#' @description function to launch the ShinyApp Arena Analytics. This app helps users to explore
+#'              their data from OpenForis Arena, gain insights and develop report-ready figures and
+#'              statistics.
 #'
 #' @param ... arguments to pass to shinyApp
 #'
@@ -179,7 +178,7 @@ shiny_run_arenalytics_dev <- function(...) {
         title = i18n$t(.tr$nav_about),
         value = "about",
        #icon = icon("info"),
-        mod_about_UI("tab_about", i18n = i18n, .tr = tr)
+        mod_about_UI("tab_about", i18n = i18n, .tr = .tr)
       ),
 
       nav_item(language_selector)

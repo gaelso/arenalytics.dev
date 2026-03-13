@@ -16,10 +16,18 @@ Imports:
     datasets,
     dplyr,
     htmltools,
+    jsonlite,
+    purrr,
     rlang,
     shiny,
     shiny.i18n,
     shinyjs,
-    shinyWidgets
+    shinyWidgets,
+    stats,
+    stringr,
+    tidyr,
+    zip
 Remotes: 
     jcheng5/d3scatter
+Depends:
+    R (>= 4.1.0)

@@ -1,6 +1,7 @@
 #' Tool module server function
 #'
 #' @importFrom rlang .data
+#' @importFrom stats setNames
 #'
 #' @noRd
 mod_tool_server <- function(id, rv) {
@@ -127,8 +128,8 @@ mod_tool_server <- function(id, rv) {
       req(rv$inputs$data$SchemaSummary, rv$inputs$data$chain_summary)
 
       rv$insights$vars <- rv$inputs$data$chain_summary$resultVariables |>
-        dplyr::filter(entity == stringr::str_remove(input$insight_sel_entity, "OLAP_")) |>
-        dplyr::filter(areaBased)
+        dplyr::filter(.data$entity == stringr::str_remove(input$insight_sel_entity, "OLAP_")) |>
+        dplyr::filter(.data$areaBased)
       rv$insights$vars_named <- setNames(rv$insights$vars$name, rv$insights$vars$label)
 
       ## USING SchemaSummary - WRONG, should use chain_summary$resultVariables
@@ -205,14 +206,14 @@ mod_tool_server <- function(id, rv) {
       req(rv$inputs$data)
 
       rv$inputs$data$chain_summary$resultVariables |>
-        dplyr::filter(active) |>
-        dplyr::group_by(entity, areaBased) |>
+        dplyr::filter(.data$active) |>
+        dplyr::group_by(.data$entity, .data$areaBased) |>
         dplyr::summarise(n_var = dplyr::n(), .groups = "drop") |>
-        dplyr::mutate(areaBased = dplyr::if_else(areaBased, "areaBased", "notAreaBased")) |>
-        tidyr::pivot_wider(names_from = areaBased, values_from = n_var) |>
+        dplyr::mutate(areaBased = dplyr::if_else(.data$areaBased, "areaBased", "notAreaBased")) |>
+        tidyr::pivot_wider(names_from = .data$areaBased, values_from = .data$n_var) |>
         dplyr::mutate(
-          areaBased = dplyr::if_else(is.na(areaBased), 0, areaBased),
-          notAreaBased = dplyr::if_else(is.na(notAreaBased), 0, notAreaBased)
+          areaBased = dplyr::if_else(is.na(.data$areaBased), 0, .data$areaBased),
+          notAreaBased = dplyr::if_else(is.na(.data$notAreaBased), 0, .data$notAreaBased)
         )
 
     })
