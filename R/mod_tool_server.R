@@ -28,23 +28,15 @@ mod_tool_server <- function(id, rv) {
       rv$inputs$path_zip <- input$load_zip$datapath
       rv$inputs$check_zip <- fct_checkzip(.path = rv$inputs$path_zip)
 
-      if(rv$inputs$check_zip$all_ok) {
-        shinyjs::hide("msg_no_file")
-        shinyjs::show("msg_file_ok")
-        shinyjs::hide("msg_file_error")
-        shinyjs::enable("btn_read_data")
-      } else {
-        shinyjs::hide("msg_no_file")
-        shinyjs::hide("msg_file_ok")
-        shinyjs::show("msg_file_error")
-        shinyjs::disable("btn_read_data")
-      }
+      shinyjs::hide("msg_no_file")
+      shinyjs::toggle("msg_file_ok",    condition = rv$inputs$check_zip$all_ok)
+      shinyjs::toggle("msg_file_error", condition = !rv$inputs$check_zip$all_ok)
+      shinyjs::toggleState("btn_read_data", condition = rv$inputs$check_zip$all_ok)
 
     })
 
     output$file_error_detail <- renderPrint({
       req(rv$inputs$check_zip)
-      # if(!rv$inputs$check_zip$all_ok) data.frame(res = unlist(rv$inputs$check_zip))
       if(!rv$inputs$check_zip$all_ok) {
         cat("Missing files:\n", paste(rv$inputs$check_zip$missing, collapse = ", "))
       }
@@ -97,17 +89,10 @@ mod_tool_server <- function(id, rv) {
       read_errors <- attr(rv$inputs$data, ".errors")
       rv$inputs$data_ok <- !is.null(rv$inputs$data) && length(read_errors) == 0
 
+      shinyjs::toggleState("btn_data_insights", condition = rv$inputs$data_ok)
+
     })
 
-    ## . + Enable insight button -----
-    observe({
-      req(rv$inputs$data_ok)
-      if (rv$inputs$data_ok) {
-        shinyjs::enable("btn_data_insights")
-      } else {
-        shinyjs::disable("btn_data_insights")
-      }
-    })
 
     ## . +  Show insights ------
     observeEvent(input$btn_data_insights, {
