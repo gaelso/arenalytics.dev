@@ -131,6 +131,9 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
 
   })
 
+  ## Change names to lowercase (myTable -> my_table)
+  file_names <- tolower(gsub("([a-z0-9])([A-Z])", "\\1_\\2", file_names))
+  file_names <- stringr::str_replace_all(file_names, "olap", "OLAP")
   names(out) <- file_names
 
   ## -- 3. Emit a final summary message so the Shiny console div shows outcome --
