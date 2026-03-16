@@ -168,7 +168,7 @@ mod_tool_UI <- function(id, i18n, .tr){
     div(
       id = ns("readdata_console"),
       style =
-        "height: 200px; overflow-y: auto; background-color:#f7f7f7; font-family:monospace; font-size: small;"
+        "height: 300px; overflow-y: auto; background-color:#f7f7f7; font-family:monospace; font-size: small;"
     ),
     br(),
     shinyjs::disabled(

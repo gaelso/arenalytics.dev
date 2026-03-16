@@ -74,9 +74,14 @@ mod_tool_server <- function(id, rv) {
       Sys.sleep(0.4)
 
       ## Read data and update progress
+      ## All messages from fct_readzip2() — including per-file success/error lines
+      ## and the final summary — are captured here and appended to the console div.
       rv$inputs$data <- withCallingHandlers(
         {
-          fct_readzip(
+          ## fct_readzip(                                             ## replaced by fct_readzip2
+          ##   .path = rv$inputs$path_zip, .pb_session = session, .pb_id = "readdata_progress"
+          ## )
+          fct_readzip2(
             .path = rv$inputs$path_zip, .pb_session = session, .pb_id = "readdata_progress"
           )
         },
@@ -85,8 +90,12 @@ mod_tool_server <- function(id, rv) {
           invokeRestart("muffleMessage")
         }
       )
-      ## Make insight button visible (to be improved)
-      if (!is.null(rv$inputs$data)) rv$inputs$data_ok <- TRUE
+
+      ## Enable the insight button only when data loaded AND no read errors.
+      ## Any error lines are already visible in the console div above.
+      ## if (!is.null(rv$inputs$data)) rv$inputs$data_ok <- TRUE  ## replaced: did not check errors
+      read_errors <- attr(rv$inputs$data, ".errors")
+      rv$inputs$data_ok <- !is.null(rv$inputs$data) && length(read_errors) == 0
 
     })
 
