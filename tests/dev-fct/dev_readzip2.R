@@ -1,44 +1,11 @@
-#' Read OpenForis Arena OLAP zipfile data (error-safe version)
-#'
-#' @description A fault-tolerant version of [fct_readzip()]. Each file inside
-#'   the ZIP is read inside a [tryCatch()] so that a single corrupted file does
-#'   not abort the entire load. Files that fail to read are returned as `NULL`
-#'   in the output list, and the error messages are attached to the result as
-#'   the `.errors` attribute. The caller can inspect that attribute to decide
-#'   whether to surface a warning in the UI.
-#'
-#'   The outer listing of the ZIP archive itself is also guarded: if
-#'   [zip::zip_list()] fails (e.g. the file is not a valid ZIP), the function
-#'   returns `NULL` immediately with a descriptive error message.
-#'
-#' @param .path A path to the data ZIP file.
-#' @param .pb_session A Shiny session for [shinyWidgets::updateProgressBar()].
-#'   Default `NULL` (progress bar is only updated inside a Shiny context).
-#' @param .pb_id The widget ID for [shinyWidgets::updateProgressBar()].
-#'   Default `NULL`.
-#'
-#' @returns A named list of entity data frames and survey descriptors, or
-#'   `NULL` if the archive itself cannot be opened. Each element is either the
-#'   parsed file content or `NULL` when reading failed. Failed files are
-#'   recorded in `attr(result, ".errors")` as a named character vector
-#'   (`name = error message`).
-#'
-#' @examples
-#' zipfile <- system.file("extdata/OLAP_Shiny_demo.zip", package = "arenalytics.dev")
-#' if (nzchar(zipfile) && file.exists(zipfile)) {
-#'   zipdata <- fct_readzip2(.path = zipfile)
-#'
-#'   ## Check for any read errors
-#'   errs <- attr(zipdata, ".errors")
-#'   if (length(errs) > 0) {
-#'     message("Files with read errors: ", paste(names(errs), collapse = ", "))
-#'   }
-#'
-#'   summary(zipdata$OLAP_tree$tree_biomass_ag)
-#' }
-#'
-#' @export
-fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
+## Alternative to fct_readzip2()
+##
+## Reading content from a ZIP file is now wrapped in both tryCatch() and
+## withCallingHandlers() to have both warnings and errors captured. Current function
+## Only gets the first item between a warning and error if both present. Chosen for
+## simplicity but less functional that this alternative here.
+
+dev_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
 
   ## !!! FOR TESTING ONLY
   # .path = "inst/extdata/OLAP_shiny_demo_corrupted.zip" ; .pb_session = NULL ; .pb_id = NULL
@@ -73,9 +40,16 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
     ext <- tools::file_ext(x)
     pct <- which(zip_content == x) / length(zip_content) * 100
 
-    ## For improved version that gets both errors and warnings together see:
-    ## tests/dev-fct/dev_readzip2.R
+    ## tryCatch handles errors (returns NULL + logs).
+    ## withCallingHandlers handles warnings without aborting execution — it logs
+    ## them and resumes, so the read still returns a value if it can.
+    ##
+    ## Previous approach used tryCatch(error=, warning=) with a re-run inside
+    ## the warning handler. That caused errors thrown during the re-run to escape
+    ## the outer tryCatch, since handler bodies are not covered by the same
+    ## tryCatch frame. The nested pattern below avoids that entirely.
     tt <- tryCatch(
+      withCallingHandlers(
         {
           if (ext == "csv") {
             utils::read.csv(unz(.path, x))
@@ -88,15 +62,13 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
           }
         },
         warning = function(w) {
-          msg <- conditionMessage(w)
           message(sprintf(
             "[%s] WARNING reading %s \u2014 %s",
-            format(Sys.time(), "%Y-%m-%d %H:%M:%S"), x, msg
+            format(Sys.time(), "%Y-%m-%d %H:%M:%S"), x, conditionMessage(w)
           ))
-          read_errors[[x]] <<- msg  # <<- writes to the enclosing map() env
-          NULL
-          #invokeRestart("muffleWarning")  # log and resume; do not abort
-        },
+          invokeRestart("muffleWarning")  # log and resume; do not abort
+        }
+      ),
       error = function(e) {
         msg <- conditionMessage(e)
         message(sprintf(
@@ -157,3 +129,25 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
   out
 
 }
+
+zips <- list(
+  good      = "inst/extdata/OLAP_Shiny_demo.zip",
+  broken    = "inst/extdata/OLAP_Shiny_demo_broken.zip",
+  corrupted = "inst/extdata/OLAP_Shiny_demo_corrupted.zip"
+)
+
+for (label in names(zips)) {
+  cat("\n===", label, "===\n")
+  console <- character(0)
+  result <- withCallingHandlers(
+    dev_readzip2(.path = zips[[label]]),
+    message = function(m) {
+      console <<- c(console, m$message)
+      invokeRestart("muffleMessage")
+    }
+  )
+  cat(console, sep = "")
+  errs <- attr(result, ".errors")
+  cat("data_ok:", !is.null(result) && length(errs) == 0, "\n")
+}
+
