@@ -78,5 +78,9 @@
 # }
 #
 # ## Run often
+# devtools::document()
 # devtools::install()
 # devtools::load_all() ; shiny_run_arenalytics_dev()
+## Checks
+# Sys.setenv("_R_CHECK_SYSTEM_CLOCK_" = 0)
+# devtools::check()
