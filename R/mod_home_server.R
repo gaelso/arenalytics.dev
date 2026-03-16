@@ -12,7 +12,7 @@ mod_home_server <- function(id, rv) {
     })
 
     observeEvent(input$to_tool2, {
-      rv$actions$to_tool2 <- input$to_tool2
+      rv$actions$to_tool <- input$to_tool2
     })
 
     observeEvent(input$to_about, {
