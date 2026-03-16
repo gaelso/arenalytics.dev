@@ -3,6 +3,7 @@
 export(fct_checkzip)
 export(fct_mean)
 export(fct_readzip)
+export(fct_readzip2)
 export(shiny_run_arenalytics_dev)
 import(bslib)
 import(shiny)
