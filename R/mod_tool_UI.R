@@ -92,7 +92,7 @@ mod_tool_UI <- function(id, i18n, .tr){
 
   ## . + Acc2: Insights --------
   ac2 <-  accordion_panel(
-    title = i18n$t("Get insights"),
+    title = "Get insights",
     icon = bsicons::bs_icon("2-circle"),
     value = ns("ac2"),
 
@@ -113,7 +113,7 @@ mod_tool_UI <- function(id, i18n, .tr){
 
   ## . + Accordion 3 -------------------------------------------
   ac3 <-  accordion_panel(
-    title = i18n$t("Run analysis"),
+    title = "Run analysis",
     icon = bsicons::bs_icon("3-circle"),
     value = ns("ac3"),
 
@@ -125,7 +125,7 @@ mod_tool_UI <- function(id, i18n, .tr){
   ac4 <-  accordion_panel(
     title = "Test Crosstalk",
     icon = bsicons::bs_icon("3-circle"),
-    value = ns("ac3"),
+    value = ns("ac4"),
 
     ## Content
     selectInput(ns("species"), "Species", levels(datasets::iris$Species), multiple = TRUE),
@@ -221,13 +221,13 @@ mod_tool_UI <- function(id, i18n, .tr){
 
   ## Cards
   card1 <- card(
-    full_screen = T,
+    full_screen = TRUE,
     h5(i18n$t("Scatter 1")),
     d3scatter::d3scatterOutput(ns("scatter1"))
   )
 
   card2 <- card(
-    full_screen = T,
+    full_screen = TRUE,
     h5(i18n$t("Scatter 2")),
     d3scatter::d3scatterOutput(ns("scatter2"))
   )
