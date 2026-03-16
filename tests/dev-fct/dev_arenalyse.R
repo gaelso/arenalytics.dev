@@ -1,61 +1,49 @@
 
-## PLACEHOLDER, see tests/dec-fct/dev_arenalyse.R
+fct_arenalyse <- function(.zip, .entity, .dim){
+  ## Data must include:
+  ## - chain_summary
+  ## - schema_summary
+  ## - report_dimensions
+  ## - OLAP_*
+
+  ## !!! FOR TESTING ONLY
+  # devtools::load_all()
+  # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip") ; names(.zip)
+  # .entity <- "tree"
+  # # summary(.zip[[paste0("OLAP_", .entity)]])
+  # .dim <- "plot_forest_type"
+  ## !!!
 
 
-# library('dplyr')
-# library('survey')
-# library('srvyr')  # more about this package: https://cran.r-project.org/web/packages/srvyr/vignettes/srvyr-vs-survey.html
-# # https://tidy-survey-r.github.io/tidy-survey-short-course/
-# library('stringr')
-# library('jsonlite')
-# library('tidyr')
-#
-# # https://cran.r-project.org/web/packages/srvyr/vignettes/srvyr-database.html
-# library('dbplyr')
-# library('RSQLite')
-#
-# # Note by Lauri: survey package may run slow! See these options to improve performance:
-# # https://stackoverflow.com/questions/35210712/methods-in-r-for-large-complex-survey-data-sets    (OLD STORY)
-# # https://www.practicalsignificance.com/posts/making-the-survey-package-run-100x-faster/
-# # fastsurvey is here:
-# # remotes::install_github("bschneidr/fastsurvey")
-#
-# # Set "survey" package options --------------------------------------------------------------------
-# # see more at https://r-survey.r-forge.r-project.org/survey/html/surveyoptions.html ---
-# options( survey.ultimate.cluster     = FALSE)
-# options( survey.adjust.domain.lonely = FALSE)
-# options( survey.lonely.psu           = "remove")
-# options( digits                      = 10)
-#
-#
-# # set the default folder
-# # setwd("C:/Users/User/Documents/arena")
-#
-# #************************************************************
-# #************************************************************
-# # TO BE IMPLEMENTED IN SHINY
-# # select entity to report (e.g. tree, stump, bamboo,..)
-# select_Entity <- function( df_ReportEntities) {
-#   # select here the entity to report
-#   arena.entity           <- "tree"
-#   return( arena.entity )
-# }
-#
-# #************************************************************
-# # TO BE IMPLEMENTED IN SHINY
-# # of the selected entity, select Dimensions to be reported
-# # these are all categorical, taxonomic and Boolean attributes of the selected entity
-# # categorical attributes contain both inputted and new created cat. variables in the Arena chain
-# select_Dimensions <- function(arena.entity, query1 ) {
-#   # select here dimensions to report
-#
-#   arena.dimensions       <- c( 'plot_forest_type', 'cluster_province', 'tree_health') #,	'tree_dbh_10cm')
-#   #  arena.dimensions       <- c('stratum_calc', 'tree_species')
-#   arena.dimensions       <- c('stand_forest_type')
-#
-#   return( arena.dimensions)
-# }
-#
+  ## 1. Pkg survey options: See R/zzz.R, set with .onLoad()
+
+  ## 2. Select ENTITY, done in shinyapp, passed to .entity
+
+  ## 3. Select DIMENSIONS, done in shinyapp, passed to .dim
+  ## !!! MAY NEED TO BE CHECKED against report_dimensions to ensure data
+
+  ## 4. Get entity labels from chain_summary and schema_summary
+  label_language <- paste0("label_", .zip$chain_summary$selectedLanguage)
+
+  label_cols <- dplyr::as_tibble(.zip$schema_summary) |>
+    dplyr::filter(.data$type == 'entity') |>
+    dplyr::select(entity = "name", label = all_of(label_language))
+
+  df_report_entities <- dplyr::as_tibble(.zip$chain_summary$resultVariables) |>
+    dplyr::filter(.data$areaBased & .data$active) |>
+    dplyr::select("entityPath", "entity") |>
+    dplyr::distinct() |>
+    dplyr::mutate(wide_table = paste0('OLAP_', .data$entity)) |>
+    dplyr::left_join(label_cols, by = 'entity')
+
+}
+
+
+
+
+
+
+
 # select_DimensionList <- function(arena.entity ) {
 #   # select here dimensions to report
 #   #  print(paste("Selected entity: ", arena.entity))
