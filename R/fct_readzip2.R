@@ -50,7 +50,7 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
     zip::zip_list(.path)$filename |> sort(),
     error = function(e) {
       message(sprintf(
-        "[%s] ERROR: Could not open ZIP archive — %s",
+        "[%s] ERROR: Could not open ZIP archive \u2014 %s",
         format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
         conditionMessage(e)
       ))
