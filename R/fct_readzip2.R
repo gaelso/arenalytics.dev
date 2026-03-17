@@ -78,7 +78,7 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
     tt <- tryCatch(
         {
           if (ext == "csv") {
-            utils::read.csv(unz(.path, x))
+            utils::read.csv(unz(.path, x), stringsAsFactors = FALSE)
           } else if (ext == "rds") {
             readRDS(gzcon(unz(.path, x)))
           } else if (ext == "json") {
