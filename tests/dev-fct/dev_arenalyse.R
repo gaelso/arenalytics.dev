@@ -14,27 +14,98 @@ fct_arenalyse <- function(.zip, .entity, .dim){
   # .dim <- "plot_forest_type"
   ## !!!
 
+  ## Make tibbles for dev
+  .zip$chain_summary$resultVariables <- dplyr::as_tibble(.zip$chain_summary$resultVariables)
+  .zip$schema_summary    <- dplyr::as_tibble(.zip$schema_summary)
+  .zip$report_dimensions <- dplyr::as_tibble(.zip$report_dimensions)
 
-  ## 1. Pkg survey options: See R/zzz.R, set with .onLoad()
+  ## 1. Pkg survey options: See R/zzz.R, set with .onLoad() ####
 
-  ## 2. Select ENTITY, done in shinyapp, passed to .entity
+  ## 2. Select ENTITY, done in shinyapp, passed to .entity ####
 
-  ## 3. Select DIMENSIONS, done in shinyapp, passed to .dim
+  ## 3. Select DIMENSIONS, done in shinyapp, passed to .dim ####
   ## !!! MAY NEED TO BE CHECKED against report_dimensions to ensure data
 
-  ## 4. Get entity labels from chain_summary and schema_summary
+  ## 4. Get entity labels from chain_summary and schema_summary ####
   label_language <- paste0("label_", .zip$chain_summary$selectedLanguage)
 
-  label_cols <- dplyr::as_tibble(.zip$schema_summary) |>
+  label_cols <- .zip$schema_summary |>
     dplyr::filter(.data$type == 'entity') |>
     dplyr::select(entity = "name", label = all_of(label_language))
 
-  df_report_entities <- dplyr::as_tibble(.zip$chain_summary$resultVariables) |>
+  df_report_entities <- .zip$chain_summary$resultVariables |>
     dplyr::filter(.data$areaBased & .data$active) |>
     dplyr::select("entityPath", "entity") |>
     dplyr::distinct() |>
     dplyr::mutate(wide_table = paste0('OLAP_', .data$entity)) |>
     dplyr::left_join(label_cols, by = 'entity')
+
+  wt_filename <- df_report_entities |>
+    dplyr::filter(.data$entity == .entity) |>
+    dplyr::pull(wide_table)
+
+  ##
+  ## !!! 1-4 probably to be done outside this function when ZIP data are read into the environment
+  ##
+
+  ## 5. Make wide table from OLAP ####
+  ## 5.1. Get OLAP table ====
+  wt <- .zip[[wt_filename]] |> dplyr::as_tibble()
+
+  ## 5.2. Get reporting variables =====
+  df_result_vars <- .zip$chain_summary$resultVariables |>
+    #dplyr::select(name, type, categoryName, parentEntity = entity, label = all_of(label_language)) |>
+    dplyr::select(name, type, categoryName, parentEntity = entity, label) |>
+    dplyr::mutate(
+      report_type = ifelse(type == 'Q', 'measure', 'dimension'),
+      type        = ifelse(type == 'Q', 'numeric', 'code'),
+      source      = 'chain'
+      )
+
+  ## 5.3 Get essential information about Wide Table data ====
+  wt_names          <- dplyr::tibble(name = names(wt))
+
+  ## Done in 1. into label_language
+  ## label_column_name <- paste0("label_", arena.chainSummary$selectedLanguage)
+
+  # get information for taxonomies & categories: name, type, categoryName, parentEntity
+  # Note: taxonomyName is renamed to --> categoryName
+  schemasum_nameinfo <- .zip$schema_summary |>
+    dplyr::mutate(categoryName = ifelse(.data$taxonomyName != "", .data$taxonomyName, .data$categoryName)) |>
+    dplyr::select("name", "type", "categoryName", "parentEntity", label = all_of(label_language))   |>
+    dplyr::mutate(report_type2 = 'dimension', source2 = 'input')
+
+  resvar_nameinfo <- df_result_vars |>
+    dplyr::select(type2 = "type", categoryName2 = "categoryName", parentEntity2 = "parentEntity", label2="label", dplyr::everything())
+
+  wt_names <- wt_names |>
+    dplyr::left_join(schemasum_nameinfo, by = "name") |>
+    dplyr::left_join(resvar_nameinfo, by = "name")
+
+
+  wideTable_names <- wideTable_names                                                                 |>
+    left_join( ,
+              by = 'name')                                                                           |>
+    left_join(df_ReportVariables |>
+                select(type2 = type, categoryName2 = categoryName, parentEntity2 = parentEntity, label2=label, everything() ),
+              by ='name')       |>
+    mutate( type   = ifelse( is.na(type), type2, type),
+            categoryName = ifelse( categoryName  == "" | is.na(categoryName), categoryName2, categoryName),
+            report_type    = ifelse( report_type == "" | is.na(report_type), report_type2, report_type),
+            source       = ifelse( source        == "" | is.na(source), source2, source),
+            label        = ifelse( label         == "" | is.na(label), label2, label),
+            parentEntity = ifelse( parentEntity  == "" | is.na(parentEntity), parentEntity2, parentEntity)) |>
+    select(-type2, -categoryName2, -report_type2, -source2, -parentEntity2, -label2)                         |>
+    mutate(dimension_baseunit = ifelse( parentEntity == arena.entity, FALSE, TRUE))
+
+  wideTable_names$report_type[        wideTable_names$name == 'weight'] <- NA
+  wideTable_names$dimension_baseunit[ wideTable_names$name == 'weight'] <- NA
+
+  # tag the stratum attribute
+  wideTable_names$stratum <- FALSE
+  if (!is.null(arena.chainSummary$stratumAttribute)) {
+    if ( arena.chainSummary$stratumAttribute != '') wideTable_names$stratum[wideTable_names$name == arena.chainSummary$stratumAttribute] <- TRUE
+  }
 
 }
 
@@ -44,60 +115,7 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 
 
 
-# select_DimensionList <- function(arena.entity ) {
-#   # select here dimensions to report
-#   #  print(paste("Selected entity: ", arena.entity))
-#   df_DimensionTable <- read.csv( "ReportDimensions.csv")
-#
-#   dimension_list <- df_DimensionTable %>%
-#     filter( entity == arena.entity) %>%
-#     #    select(dimension, label_en)
-#     pull( dimension)
-#
-#   return( dimension_list )
-# }
-#
-#
-#
-#
-#
-# #************************************************************
-# # 1) unzip input file, 2) read Arena json file, 3) read SchemaSummary, 4) read list of entities
-# get_Entities <- function( Zip_file) {
-#
-#   #  pathTemp = paste0(getwd(), "/Temp")
-#
-#   # 1- Unzip input file  -------------------------------------------------------
-#   # delete temporary folder for zip file data
-#   #  unlink("./Temp", recursive=TRUE)
-#
-#   unzip(Zip_file, exdir = ".") #     "./Temp")
-#   #  setwd("./Temp")
-#
-#
-#   # 2- Read json, schemaSummary  -------------------------------------------------------
-#   # read json
-#   arena.chainSummary   <- arena.chainSummary <- jsonlite::fromJSON( 'chain_summary.json' )
-#   # read SchemaSummary
-#   arena.SchemaSummary  <- read.csv('SchemaSummary.csv')
-#
-#   # label column's name, of selected language:
-#   label_column_name <- paste0("label_", arena.chainSummary$selectedLanguage)
-#
-#   # 3- Read list of entities  -------------------------------------------------------
-#   df_ReportEntities  <- arena.chainSummary$resultVariables %>%
-#     dplyr::filter(areaBased==TRUE & active==TRUE)          %>%
-#     dplyr::select(entityPath, entity)                      %>%
-#     unique()                                               %>%
-#     dplyr::mutate( wideTable = paste0('OLAP_', entity, '.csv')) %>%
-#     left_join( arena.SchemaSummary                         %>%
-#                  filter( type =='entity')                       %>%
-#                  select( entity = name, label = all_of( label_column_name)),
-#                by = 'entity')
-#   query1 <- list(arena.chainSummary, arena.SchemaSummary, df_ReportEntities )
-#   names(query1) <- c('chainSummary', 'SchemaSummary', 'ReportEntities')
-#   return(query1 )
-# }
+
 #
 # #************************************************************
 # # Read and return df_wideTable, wideTable_names
@@ -119,8 +137,8 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #   df_wideTable   <- read.csv( widetable_file, stringsAsFactors = F  )
 #
 #   # 2- Get all variables in the Arena chain -------------------------------------------------------
-#   df_ReportVariables           <- arena.chainSummary$resultVariables %>%
-#     select(name, type, categoryName, parentEntity = entity, label= all_of(label_column_name)) %>%
+#   df_ReportVariables           <- arena.chainSummary$resultVariables |>
+#     select(name, type, categoryName, parentEntity = entity, label= all_of(label_column_name)) |>
 #     mutate(report_type = ifelse(type=='Q', 'measure', 'dimension'),
 #            type        = ifelse(type=='Q', 'numeric', 'code'),
 #            source      = 'chain' )
@@ -136,22 +154,22 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #
 #   # get information for taxonomies & categories: name, type, categoryName, parentEntity
 #   # Note: taxonomyName is renamed to --> categoryName
-#   wideTable_names <- wideTable_names                                                                 %>%
-#     left_join(arena.SchemaSummary %>%
-#                 mutate( categoryName= ifelse(taxonomyName != "", taxonomyName, categoryName))        %>%
-#                 select( name, type, categoryName, parentEntity, label= all_of(label_column_name) )   %>%
+#   wideTable_names <- wideTable_names                                                                 |>
+#     left_join(arena.SchemaSummary |>
+#                 mutate( categoryName= ifelse(taxonomyName != "", taxonomyName, categoryName))        |>
+#                 select( name, type, categoryName, parentEntity, label= all_of(label_column_name) )   |>
 #                 mutate( report_type2 = 'dimension', source2 = 'input') ,
-#               by = 'name')                                                                           %>%
-#     left_join(df_ReportVariables %>%
+#               by = 'name')                                                                           |>
+#     left_join(df_ReportVariables |>
 #                 select(type2 = type, categoryName2 = categoryName, parentEntity2 = parentEntity, label2=label, everything() ),
-#               by ='name')       %>%
+#               by ='name')       |>
 #     mutate( type   = ifelse( is.na(type), type2, type),
 #             categoryName = ifelse( categoryName  == "" | is.na(categoryName), categoryName2, categoryName),
 #             report_type    = ifelse( report_type == "" | is.na(report_type), report_type2, report_type),
 #             source       = ifelse( source        == "" | is.na(source), source2, source),
 #             label        = ifelse( label         == "" | is.na(label), label2, label),
-#             parentEntity = ifelse( parentEntity  == "" | is.na(parentEntity), parentEntity2, parentEntity)) %>%
-#     select(-type2, -categoryName2, -report_type2, -source2, -parentEntity2, -label2)                         %>%
+#             parentEntity = ifelse( parentEntity  == "" | is.na(parentEntity), parentEntity2, parentEntity)) |>
+#     select(-type2, -categoryName2, -report_type2, -source2, -parentEntity2, -label2)                         |>
 #     mutate(dimension_baseunit = ifelse( parentEntity == arena.entity, FALSE, TRUE))
 #
 #   wideTable_names$report_type[        wideTable_names$name == 'weight'] <- NA
@@ -204,9 +222,9 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #   # initialize 'arena.analyze'
 #   arena.analyze  <- list( entity = arena.entity,              # selected entity name to report, e.g. 'tree'
 #                           dimensions_names_all =              # list of all possible dimension names of the selected entity
-#                             (arena.wideTable_names              %>%
-#                                filter( report_type == "dimension") %>%
-#                                select( name) %>% pull()),
+#                             (arena.wideTable_names              |>
+#                                filter( report_type == "dimension") |>
+#                                select( name) |> pull()),
 #                           dimensions = arena.dimensions,      # list of all selected dimensions to report, of the selected entity
 #                           dimensions_at_baseunit = '',        # from previous group, dimensions which belong to base unit level or above, e.g. forest_type, province, etc. but not tree_species, etc.
 #                           dimensions_all_at_baseunit = FALSE, # are all 'dimensions' at the base unit level?
@@ -227,8 +245,8 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #   if ( arena.analyze$stratification) arena.analyze$strat_attribute <- arena.chainSummary$stratumAttribute
 #
 #   # 3. List of Dimensions at the base unit level --------------------------
-#   arena.analyze$dimensions_at_baseunit <- filter(arena.wideTable_names, name %in% arena.analyze$dimensions & dimension_baseunit==TRUE) %>%
-#     select(name) %>% pull()
+#   arena.analyze$dimensions_at_baseunit <- filter(arena.wideTable_names, name %in% arena.analyze$dimensions & dimension_baseunit==TRUE) |>
+#     select(name) |> pull()
 #
 #
 #   # If stratum and no other base unit level attributes in Dimensions, then take stratification out for "survey"
@@ -252,23 +270,23 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #   # 5. all Dimensions at the base unit level or above? ------
 #   if (length(arena.analyze$dimensions) == length(arena.analyze$dimensions_at_baseunit)) arena.analyze$dimensions_all_at_baseunit = TRUE
 #
-#   arena.analyze$measures <- arena.wideTable_names %>% filter( report_type == "measure") %>%
-#     select(name) %>% pull()
+#   arena.analyze$measures <- arena.wideTable_names |> filter( report_type == "measure") |>
+#     select(name) |> pull()
 #
 #
 #   # 6. Read analysis data to new DF  ------
-#   df_analysis_data <- df_wideTable                                                 %>%
-#     filter( OLAP_baseunit_total == arena.analyze$dimensions_all_at_baseunit)       %>% # TRUE/FALSE in wide table (last column)
-#     mutate( across(all_of(arena.analyze$dimensions_names_all), ~as.character(.)))  %>%
+#   df_analysis_data <- df_wideTable                                                 |>
+#     filter( OLAP_baseunit_total == arena.analyze$dimensions_all_at_baseunit)       |> # TRUE/FALSE in wide table (last column)
+#     mutate( across(all_of(arena.analyze$dimensions_names_all), ~as.character(.)))  |>
 #     select( -OLAP_baseunit_total)
 #
 #
 #   # 7. Complete data (==> df_analysis_total) --------------------
 #   if (arena.analyze$dimensions_all_at_baseunit) {
 #     # all Dimensions are at the base unit level or above.
-#     df_analysis_total <- df_analysis_data                                                       %>%
-#       dplyr::filter( weight > 0)                                                                %>%
-#       dplyr::mutate( across( any_of( arena.analyze$measures),   ~tidyr::replace_na(., 0)))      %>%
+#     df_analysis_total <- df_analysis_data                                                       |>
+#       dplyr::filter( weight > 0)                                                                |>
+#       dplyr::mutate( across( any_of( arena.analyze$measures),   ~tidyr::replace_na(., 0)))      |>
 #       dplyr::mutate( across( any_of( arena.analyze$dimensions), ~tidyr::replace_na(., "NoData")))
 #
 #   } else {  # all Dimensions are not at the base unit (there can be e.g. tree_species in Dimensions)
@@ -287,48 +305,48 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #
 #     if ( arena.analyze$stratification ) {     # run 'tidyr::complete' across strata by 'dim_names'
 #       df_analysis_data[arena.analyze$strat_attribute][is.na(df_analysis_data[arena.analyze$strat_attribute])] <- "NoData"
-#       df_analysis_data <- df_analysis_data                        %>%
-#         group_by( across( all_of(arena.analyze$strat_attribute))) %>%
-#         tidyr::complete(!!!syms(dim_names))                       %>%
+#       df_analysis_data <- df_analysis_data                        |>
+#         group_by( across( all_of(arena.analyze$strat_attribute))) |>
+#         tidyr::complete(!!!syms(dim_names))                       |>
 #         data.frame()
 #     } else {                                  # run 'tidyr::complete' by 'dim_names'
-#       df_analysis_data <- df_analysis_data                        %>%
-#         tidyr::complete(!!!syms(dim_names))                       %>%
+#       df_analysis_data <- df_analysis_data                        |>
+#         tidyr::complete(!!!syms(dim_names))                       |>
 #         data.frame()
 #     }
 #
 #     df_analysis_data$entity_count_[is.na(df_analysis_data$entity_count_)] <- 0
 #
 #     # join back previously dropped dimensions, base_UUID_, weight, exp_factor_
-#     df_analysis_data <- df_analysis_data                          %>%
-#       select(-weight, -exp_factor_, -all_of(names_to_drop))       %>%
-#       left_join(df_analysis_data                                  %>%
-#                   dplyr::filter( !is.na(exp_factor_))             %>%
-#                   distinct( !! sym(base_UUID_), .keep_all = T )   %>%
+#     df_analysis_data <- df_analysis_data                          |>
+#       select(-weight, -exp_factor_, -all_of(names_to_drop))       |>
+#       left_join(df_analysis_data                                  |>
+#                   dplyr::filter( !is.na(exp_factor_))             |>
+#                   distinct( !! sym(base_UUID_), .keep_all = T )   |>
 #                   dplyr::select( all_of(base_UUID_), all_of( names_to_drop), weight, exp_factor_),
-#                 by = base_UUID_)                                  %>%
+#                 by = base_UUID_)                                  |>
 #       dplyr::mutate( across( any_of( arena.analyze$measures),   ~tidyr::replace_na(., 0)))
 #
 #     # compute aggregated 'df_analysis_total'
-#     df_analysis_total <- df_analysis_data                                               %>%
-#       dplyr::filter( weight > 0 )                                                       %>%
-#       dplyr::group_by(  across( unique( c( base_UUID_, arena.analyze$dimensions))))     %>%
+#     df_analysis_total <- df_analysis_data                                               |>
+#       dplyr::filter( weight > 0 )                                                       |>
+#       dplyr::group_by(  across( unique( c( base_UUID_, arena.analyze$dimensions))))     |>
 #       # fix MAX function... wrong!
 #       dplyr::summarize( entity_count_ = max(entity_count_), across( .cols= all_of( arena.analyze$measures),
 #                                                                     list( Total = ~sum( .x, na.rm = TRUE )),
-#                                                                     .names = "{.col}") )                                    %>%
-#       data.frame() %>%
-#       left_join(df_analysis_data %>% select( all_of(base_UUID_), weight, exp_factor_) %>% distinct(),
+#                                                                     .names = "{.col}") )                                    |>
+#       data.frame() |>
+#       left_join(df_analysis_data |> select( all_of(base_UUID_), weight, exp_factor_) |> distinct(),
 #                 by = base_UUID_)
 #
-#     if (cluster_UUID_ != "") df_analysis_total <- df_analysis_total                     %>%
-#       left_join(df_analysis_data %>% select( all_of(base_UUID_), all_of(cluster_UUID_)) %>% distinct(),
+#     if (cluster_UUID_ != "") df_analysis_total <- df_analysis_total                     |>
+#       left_join(df_analysis_data |> select( all_of(base_UUID_), all_of(cluster_UUID_)) |> distinct(),
 #                 by = base_UUID_)
 #   }
 #
 #   # 8. Omit data if (exp_factor_ == 0) ------
 #   # there might be strata which area is set to 0 ha !
-#   df_analysis_total <- df_analysis_total %>% filter( exp_factor_ != 0)
+#   df_analysis_total <- df_analysis_total |> filter( exp_factor_ != 0)
 #
 #   # 9. Initialize cluster & weight variables for "survey" -----
 #   ids_2_survey     <- NULL
@@ -336,10 +354,10 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #   arena.weights    <- "exp_factor_"
 #
 #   # 10. Compute DF for means (per hectare values) ------
-#   df_analysis_mean <- df_analysis_total %>%
+#   df_analysis_mean <- df_analysis_total |>
 #     dplyr::mutate( across( .cols= all_of( arena.analyze$measures),
 #                            list( Mean = ~ .x / exp_factor_),
-#                            .names = "{.col}"))               %>%
+#                            .names = "{.col}"))               |>
 #     data.frame()
 #
 #
@@ -358,7 +376,7 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #
 #   # 12. add serial number required by SQLite DB -----
 #   df_analysis_mean$serialno <- 1:nrow(df_analysis_mean)
-#   df_analysis_mean <- df_analysis_mean %>%
+#   df_analysis_mean <- df_analysis_mean |>
 #     select(serialno, everything())
 #
 #   # 13. Set up SQLite database and table ----
@@ -371,14 +389,14 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #   # object.size(df_analysis_mean_db)
 #
 #   # an example how to use:
-#   # df_analysis_mean_db %>% select(tree_count) %>% pull()
+#   # df_analysis_mean_db |> select(tree_count) |> pull()
 #
 #   rm(df_analysis_mean);  rm(df_analysis_data)
 #
 #   # # 14. survey S3 object: SRS case (for efficiency of stratification) -----
 #   # # if stratification, compute SRS case. Needed to compute efficiency of stratification.
 #   # if ( arena.analyze$stratification ) {
-#   #     design_srvyr_SRS <- df_analysis_mean_db  %>%
+#   #     design_srvyr_SRS <- df_analysis_mean_db  |>
 #   #       srvyr::as_survey_design(
 #   #         ids       = !!ids_2_survey,
 #   #         strata    = NULL,
@@ -388,7 +406,7 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #   # }
 #
 #   # 15. survey S3 object  -----
-#   design_srvyr_mean <-  df_analysis_mean_db       %>%
+#   design_srvyr_mean <-  df_analysis_mean_db       |>
 #     srvyr::as_survey_design(
 #       ids       = !!ids_2_survey,
 #       strata    = !!stratum_2_survey,
@@ -410,16 +428,16 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #   # 17. Compute aggregated Expansion areas ------
 #   # these are later in step #
 #   if ( length( arena.analyze$dimensions_at_baseunit) == 0) {     # no Dimensions at the base unit, e.g. only 'tree_species' is reported
-#     TotalArea_ <- df_analysis_total                              %>%
-#       dplyr::select( all_of( base_UUID_), area_ = exp_factor_)   %>%
-#       unique()                                                   %>% # select unique base units (i.e. samples)
-#       dplyr::select( area_)                                      %>% # get total sum of areas
+#     TotalArea_ <- df_analysis_total                              |>
+#       dplyr::select( all_of( base_UUID_), area_ = exp_factor_)   |>
+#       unique()                                                   |> # select unique base units (i.e. samples)
+#       dplyr::select( area_)                                      |> # get total sum of areas
 #       sum()
 #   } else {  # by combinations of dimensions at the base unit level
-#     df_AREAS <- df_analysis_total %>%
-#       unite("JOIN_COL", arena.analyze$dimensions_at_baseunit, sep="**", remove = FALSE, na.rm = FALSE) %>%  # create a temporary column for later join
-#       dplyr::select( all_of(base_UUID_), JOIN_COL, exp_factor_)  %>%
-#       unique()                                                   %>%  # compute sum of areas by base unit level dimensions
+#     df_AREAS <- df_analysis_total |>
+#       unite("JOIN_COL", arena.analyze$dimensions_at_baseunit, sep="**", remove = FALSE, na.rm = FALSE) |>  # create a temporary column for later join
+#       dplyr::select( all_of(base_UUID_), JOIN_COL, exp_factor_)  |>
+#       unique()                                                   |>  # compute sum of areas by base unit level dimensions
 #       summarize( area_ = sum(exp_factor_), .by = JOIN_COL)
 #   }
 #
@@ -432,23 +450,23 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #
 #   # 18. survey: run survey_mean() --------------
 #   # MEANS (per hectares) for selected categories
-#   OUT_mean  <- design_srvyr_mean                                                %>%
-#     collect()                                                                   %>%
-#     dplyr::group_by( across( arena.analyze$dimensions ))                        %>%
+#   OUT_mean  <- design_srvyr_mean                                                |>
+#     collect()                                                                   |>
+#     dplyr::group_by( across( arena.analyze$dimensions ))                        |>
 #     dplyr::summarize( across( any_of(arena.analyze$measures),
-#                               list( ~survey_mean( ., na.rm = FALSE, vartype = c("se","ci"), proportion = FALSE, level = arena.clevel, df = Inf )))) %>%
+#                               list( ~survey_mean( ., na.rm = FALSE, vartype = c("se","ci"), proportion = FALSE, level = arena.clevel, df = Inf )))) |>
 #     rename_with(.fn = ~ str_replace(.x, "_1", "_1_"), .cols = ends_with("_1"))
 #
 #   if ( length(arena.analyze$dimensions_at_baseunit) == 0) {
-#     OUT_total <- OUT_mean                     %>%
+#     OUT_total <- OUT_mean                     |>
 #       mutate( area_ = TotalArea_)
 #   } else {
-#     OUT_mean <- OUT_mean                    %>%
+#     OUT_mean <- OUT_mean                    |>
 #       # create a temporary column for joining the expansion area table
 #       unite("JOIN_COL", arena.analyze$dimensions_at_baseunit, sep = "**", remove = FALSE, na.rm = FALSE)
 #
 #     # join expansion area table
-#     OUT_total <- OUT_mean                   %>%
+#     OUT_total <- OUT_mean                   |>
 #       left_join( df_AREAS, by = 'JOIN_COL')
 #   }
 #
@@ -459,18 +477,18 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #
 #
 #   # 19. Compute totals -----
-#   OUT_total <- OUT_total                                                                    %>%
-#     mutate( across( contains("_1_"), ~.x * area_  , .names = "{col}"), .keep = 'all')       %>%
+#   OUT_total <- OUT_total                                                                    |>
+#     mutate( across( contains("_1_"), ~.x * area_  , .names = "{col}"), .keep = 'all')       |>
 #     rename_with(.fn = ~ str_replace(.x, "_1_", "_"),
-#                 .cols = contains("_1_"))                                                    %>%
+#                 .cols = contains("_1_"))                                                    |>
 #     rename_with(.fn = ~ str_sub(.x, end= -2),
 #                 .cols = ends_with("_"))
 #
 #   # 20. Clean output tables----------------
 #   # clear header texts
-#   OUT_mean  <- OUT_mean                                                                     %>%
+#   OUT_mean  <- OUT_mean                                                                     |>
 #     rename_with(.fn = ~ str_replace(.x, "_1_", "_"),
-#                 .cols = contains("_1_"))                                                    %>%
+#                 .cols = contains("_1_"))                                                    |>
 #     rename_with(.fn = ~ str_sub(.x, end= -2),
 #                 .cols = ends_with("_"))
 #
@@ -478,41 +496,41 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #   OUT_mean[  is.na(OUT_mean )] <- ""
 #
 #   # convert negative lower confidence intervals to zeros
-#   OUT_mean   <- OUT_mean   %>%
+#   OUT_mean   <- OUT_mean   |>
 #     mutate( across( ends_with("_low"),  ~ if_else(.x < 0, 0, .x) ))
-#   OUT_total  <- OUT_total  %>%
+#   OUT_total  <- OUT_total  |>
 #     mutate( across( ends_with("_low"),  ~ if_else(.x < 0, 0, .x) ))
 #
 #   # remove rows with only zeros in Measures. ???
 #   # colsZero = ncol(OUT_mean) - rowSums(OUT_mean==0) - length(arena.analyze$dimensions) - 1
 #   # colsZero =  ( colsZero == 0 )
-#   # OUT_mean  <- OUT_mean  %>% cbind(colsZero) %>% filter(!colsZero) %>% select(-colsZero)
-#   # OUT_total <- OUT_total %>% cbind(colsZero) %>% filter(!colsZero) %>% select(-colsZero)
+#   # OUT_mean  <- OUT_mean  |> cbind(colsZero) |> filter(!colsZero) |> select(-colsZero)
+#   # OUT_total <- OUT_total |> cbind(colsZero) |> filter(!colsZero) |> select(-colsZero)
 #
 #
 #   # 21. Number of PSUs & SSUs -----------------------
 #   # across Dimensions
 #   # compute number of Primary Sampling Units (PSU) and Secondary Sampling Units (SSU), and number of items (e.g., tally trees)
 #   if (length(arena.analyze$dimensions_at_baseunit) == 0) {
-#     psu_ssu_counts <- df_analysis_total     %>%
-#       select( all_of(base_UUID_))           %>%
-#       unique()                              %>%
+#     psu_ssu_counts <- df_analysis_total     |>
+#       select( all_of(base_UUID_))           |>
+#       unique()                              |>
 #       summarize( base_unit_count = n())
 #
 #     psu_ssu_counts$item_count <- sum( df_analysis_total$entity_count_)
 #     # swap column order
-#     psu_ssu_counts <- psu_ssu_counts %>% relocate( item_count)
+#     psu_ssu_counts <- psu_ssu_counts |> relocate( item_count)
 #
 #   } else {
-#     psu_ssu_counts <- df_analysis_total    %>%
-#       unite("JOIN_COL", arena.analyze$dimensions_at_baseunit, sep="**", remove = FALSE, na.rm = FALSE) %>%
-#       select( all_of(base_UUID_), JOIN_COL) %>%
-#       unique()                             %>%
+#     psu_ssu_counts <- df_analysis_total    |>
+#       unite("JOIN_COL", arena.analyze$dimensions_at_baseunit, sep="**", remove = FALSE, na.rm = FALSE) |>
+#       select( all_of(base_UUID_), JOIN_COL) |>
+#       unique()                             |>
 #       summarize( base_unit_count = n(), .by = 'JOIN_COL')
 #
-#     psu_ssu_counts <- df_analysis_total    %>%
-#       unite("JOIN_COL", arena.analyze$dimensions_at_baseunit, sep="**", remove = FALSE, na.rm = FALSE) %>%
-#       summarize( item_count = sum(entity_count_), .by = 'JOIN_COL') %>%
+#     psu_ssu_counts <- df_analysis_total    |>
+#       unite("JOIN_COL", arena.analyze$dimensions_at_baseunit, sep="**", remove = FALSE, na.rm = FALSE) |>
+#       summarize( item_count = sum(entity_count_), .by = 'JOIN_COL') |>
 #       right_join( psu_ssu_counts, by = 'JOIN_COL')
 #   }
 #   psu_ssu_counts
@@ -522,14 +540,14 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #     ids_2_survey   <- cluster_UUID_
 #     # there must be a more cleaver way of computing the following:
 #     if (length(arena.analyze$dimensions_at_baseunit) == 0) {
-#       psu_ssu_counts$cluster_count <- df_analysis_total %>% select( all_of(cluster_UUID_)) %>%
-#         unique() %>% nrow()
+#       psu_ssu_counts$cluster_count <- df_analysis_total |> select( all_of(cluster_UUID_)) |>
+#         unique() |> nrow()
 #     } else {
-#       psu_ssu_counts <- psu_ssu_counts %>%
-#         left_join(df_analysis_total %>%
-#                     unite("JOIN_COL", arena.analyze$dimensions_at_baseunit, sep="**", remove = FALSE, na.rm = FALSE) %>%
-#                     select(all_of(cluster_UUID_), JOIN_COL) %>%
-#                     unique() %>%
+#       psu_ssu_counts <- psu_ssu_counts |>
+#         left_join(df_analysis_total |>
+#                     unite("JOIN_COL", arena.analyze$dimensions_at_baseunit, sep="**", remove = FALSE, na.rm = FALSE) |>
+#                     select(all_of(cluster_UUID_), JOIN_COL) |>
+#                     unique() |>
 #                     summarize(cluster_count = n(), .by = 'JOIN_COL'),
 #                   by = 'JOIN_COL')
 #
@@ -547,21 +565,21 @@ fct_arenalyse <- function(.zip, .entity, .dim){
 #       OUT_total$cluster_count <- sum( psu_ssu_counts$cluster_count)
 #     }
 #   } else {
-#     OUT_mean  <- OUT_mean  %>% left_join(psu_ssu_counts, by = 'JOIN_COL') %>% select(-JOIN_COL)
-#     OUT_total <- OUT_total %>% left_join(psu_ssu_counts, by = 'JOIN_COL') %>% select(-JOIN_COL)
+#     OUT_mean  <- OUT_mean  |> left_join(psu_ssu_counts, by = 'JOIN_COL') |> select(-JOIN_COL)
+#     OUT_total <- OUT_total |> left_join(psu_ssu_counts, by = 'JOIN_COL') |> select(-JOIN_COL)
 #   }
 #
 #
 #   # 24. remove rows where all Dimensions are blank  -----
 #   # These are blank rows with zero result values
-#   # OUT_total <- OUT_total %>%
-#   #   mutate(total_char_length = rowSums( across( arena.analyze$dimensions, nchar))) %>%
-#   #   filter(  total_char_length != 0) %>%
+#   # OUT_total <- OUT_total |>
+#   #   mutate(total_char_length = rowSums( across( arena.analyze$dimensions, nchar))) |>
+#   #   filter(  total_char_length != 0) |>
 #   #   select( -total_char_length)
 #   #
-#   # OUT_mean <- OUT_mean  %>%
-#   #   mutate(total_char_length = rowSums( across( arena.analyze$dimensions, nchar))) %>%
-#   #   filter(  total_char_length != 0) %>%
+#   # OUT_mean <- OUT_mean  |>
+#   #   mutate(total_char_length = rowSums( across( arena.analyze$dimensions, nchar))) |>
+#   #   filter(  total_char_length != 0) |>
 #   #   select( -total_char_length)
 #
 #   OUT_mean$item_count  <- NULL
