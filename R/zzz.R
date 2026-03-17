@@ -28,13 +28,13 @@
   op <- c(
     "survey.ultimate.cluster",
     "survey.adjust.domain.lonely",
-    "survey.lonely.psu",
-    "digits"
+    "survey.lonely.psu"
   )
   options(setNames(
     vector("list", length(op)),  # list of NULLs
     op
   ))
+  options(digits = 7) ## Default
 
 }
 
