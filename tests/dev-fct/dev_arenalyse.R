@@ -320,23 +320,32 @@ fct_arenalyse <- function(.zip, .entity, .dim){
       dplyr::select(dplyr::all_of(base_UUID_), weight, exp_factor_) |>
       dplyr::distinct()
 
+    grouping_cols <- unique(c(base_UUID_, arena.analyze$dimensions))
+
     df_analysis_total <- df_analysis_data |>
       dplyr::filter(weight > 0) |>
-      dplyr::group_by(dplyr::across(unique(c( base_UUID_, arena.analyze$dimensions)))) |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(grouping_cols))) |>
       # fix MAX function... wrong!
-      dplyr::summarize(
+      dplyr::summarise(
         entity_count_ = max(entity_count_),
         across(
           .cols = dplyr::all_of(arena.analyze$measures),
-          list(Total = ~sum( .x, na.rm = TRUE )),
+          # .fns = list(Total = ~sum(.x, na.rm = TRUE )), ## !!! List not needed here?
+          .fns = ~sum(.x, na.rm = TRUE),
           .names = "{.col}"
-          )
+          ),
+        .groups = "drop"
         ) |>
       dplyr::left_join(tmp_analysis_core, by = base_UUID_)
 
-    if (cluster_UUID_ != "") df_analysis_total <- df_analysis_total                     |>
-      left_join(df_analysis_data |> select( all_of(base_UUID_), all_of(cluster_UUID_)) |> distinct(),
-                by = base_UUID_)
+    if (cluster_UUID_ != "") {
+      tmp_cluster <- df_analysis_data |>
+        dplyr::select(dplyr::all_of(base_UUID_), dplyr::all_of(cluster_UUID_)) |>
+        dplyr::distinct()
+
+      df_analysis_total <- df_analysis_total |>
+        dplyr::left_join(tmp_cluster, by = base_UUID_)
+    }
   }
 
 
