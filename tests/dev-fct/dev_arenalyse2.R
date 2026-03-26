@@ -1,46 +1,8 @@
-#' Run survey estimation for a given entity and set of reporting dimensions
-#'
-#' Computes weighted means and totals per hectare for all measures of a selected
-#' entity, stratified or clustered according to the sampling design described in
-#' the chain summary. Supports simple random sampling (SRS), stratified SRS, and
-#' cluster sampling designs.
-#'
-#' @param .zip Named list produced by \code{fct_readzip2()}. Must contain:
-#'   \describe{
-#'     \item{chain_summary}{Survey chain metadata (sampling strategy, base unit,
-#'       result variables, language, etc.).}
-#'     \item{schema_summary}{Data dictionary describing all input dimensions.}
-#'     \item{report_dimensions}{Available reporting dimensions.}
-#'     \item{OLAP_<entity>}{Wide-format OLAP table for the target entity.}
-#'   }
-#' @param .entity Character scalar. Name of the entity to analyse (e.g.
-#'   \code{"tree"}, \code{"plot"}).
-#' @param .dim Character vector. Names of the reporting dimensions to include
-#'   (e.g. \code{c("plot_forest_type", "plot_province")}).
-#'
-#' @return A named list with two elements:
-#'   \describe{
-#'     \item{MEANS}{Tibble of per-hectare survey means with standard errors and
-#'       confidence intervals for each measure × dimension combination.}
-#'     \item{TOTALS}{Tibble of estimated totals derived from \code{MEANS} by
-#'       multiplying by expansion area.}
-#'   }
-#'   Both tibbles include \code{area}, \code{item_count}, \code{base_unit_count},
-#'   and optionally \code{cluster_count} columns.
-#'
-#' @importFrom dplyr filter select distinct mutate left_join right_join pull
-#'   group_by summarise across any_of all_of ends_with contains where
-#'   rename_with coalesce na_if if_else n n_distinct n_distinct
-#' @importFrom tibble tibble as_tibble
-#' @importFrom tidyr replace_na complete unite
-#' @importFrom rlang sym syms .data
-#' @importFrom stringr str_detect str_remove str_replace str_sub
-#' @importFrom srvyr as_survey_design survey_mean
-#'
-#' @export
-fct_arenalyse <- function(.zip, .entity, .dim) {
+fct_arenalyse2 <- function(.zip, .entity, .dim) {
+  ## Data must include: chain_summary, schema_summary, report_dimensions, OLAP_*
 
   ## !!! FOR TESTING ONLY
+  # devtools::load_all()
   # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip") ; names(.zip)
   # .entity <- .zip$chain_summary$analysis$entity
   # .dim <- .zip$chain_summary$analysis$dimensions
@@ -268,15 +230,15 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   }
 
   ## 7. Survey design ------
-  ## !! on a string injects the column name; !!NULL is treated as no argument
-  ids_val    <- if (use_cluster) cluster_uuid else NULL
-  strata_val <- if (use_strat)   strat_col    else NULL
+  ## rlang::sym() propagates NULL cleanly when cluster/strata are absent
+  ids_sym    <- if (use_cluster) rlang::sym(cluster_uuid) else NULL
+  strata_sym <- if (use_strat)   rlang::sym(strat_col)   else NULL
 
   design <- df_mean |>
     srvyr::as_survey_design(
-      ids       = !!ids_val,
-      strata    = !!strata_val,
-      weights   = .data$exp_factor_,
+      ids       = !!ids_sym,
+      strata    = !!strata_sym,
+      weights   = exp_factor_,
       nest      = TRUE,
       variables = dplyr::all_of(c(dims, measures, "exp_factor_"))
     )
@@ -362,8 +324,8 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   if (length(dims_at_bu) == 0) {
 
     ## Scalar counts broadcast to all output rows
-    n_bu    <- dplyr::n_distinct(df_total[[base_uuid]])
-    n_items <- sum(df_total$entity_count_)
+    n_bu      <- dplyr::n_distinct(df_total[[base_uuid]])
+    n_items   <- sum(df_total$entity_count_)
 
     out_mean  <- out_mean  |> dplyr::mutate(base_unit_count = n_bu, item_count = n_items)
     out_total <- out_total |> dplyr::mutate(base_unit_count = n_bu, item_count = n_items)
