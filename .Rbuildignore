@@ -5,3 +5,5 @@
 ^\.positai$
 ^\.claude$
 ^data-raw$
+^app\.R$
+^rsconnect$
