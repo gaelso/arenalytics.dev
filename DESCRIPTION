@@ -15,6 +15,7 @@ Imports:
     d3scatter (>= 0.1.0),
     datasets,
     dplyr,
+    ggplot2,
     htmltools,
     jsonlite,
     purrr,
@@ -23,8 +24,10 @@ Imports:
     shiny.i18n,
     shinyjs,
     shinyWidgets,
+    srvyr,
     stats,
     stringr,
+    tibble,
     tidyr,
     zip
 Remotes: 
