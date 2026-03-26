@@ -203,7 +203,10 @@ shiny_run_arenalytics_dev <- function(...) {
       inputs   = reactiveValues(),
       insights = reactiveValues(),
       ct       = reactiveValues(),
-      actions  = reactiveValues()
+      actions  = reactiveValues(),
+      ## $$$
+      analysis = reactiveValues()
+      ## $$$
     )
 
     ## NOT USED - Save language value to show/hide entire divs with shinyjs rather than long i18n translators
