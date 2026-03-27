@@ -28,14 +28,7 @@
 #'   Both tibbles include \code{area}, \code{item_count}, \code{base_unit_count},
 #'   and optionally \code{cluster_count} columns.
 #'
-#' @importFrom dplyr filter select distinct mutate left_join right_join pull
-#'   group_by summarise across any_of all_of ends_with contains where
-#'   rename_with coalesce na_if if_else n n_distinct n_distinct
-#' @importFrom tibble tibble as_tibble
-#' @importFrom tidyr replace_na complete unite
-#' @importFrom rlang sym syms .data
-#' @importFrom stringr str_detect str_remove str_replace str_sub
-#' @importFrom srvyr as_survey_design survey_mean
+#' @importFrom rlang .data
 #'
 #' @export
 fct_arenalyse <- function(.zip, .entity, .dim) {
@@ -45,6 +38,7 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   # .entity <- .zip$chain_summary$analysis$entity
   # .dim <- .zip$chain_summary$analysis$dimensions
   # .dim
+  # .dim <- c("tree_plant_type", "province", "stratum_calc", "dbh_up100_10cm", "cluster_land_use", "cluster_forest_type", "cluster_forest_status")
   # summary(.zip[[paste0("OLAP_", .entity)]])
   ## !!!
 
@@ -276,7 +270,7 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
     srvyr::as_survey_design(
       ids       = !!ids_val,
       strata    = !!strata_val,
-      weights   = .data$exp_factor_,
+      weights   = "exp_factor_",
       nest      = TRUE,
       variables = dplyr::all_of(c(dims, measures, "exp_factor_"))
     )
@@ -305,23 +299,92 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   }
 
   ## 9. Survey estimation ------
+  # t0 <- Sys.time()
+  #
+  # out_mean_test <- design |>
+  #   dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
+  #   dplyr::summarise(
+  #     dplyr::across(
+  #       .cols = dplyr::any_of(measures),
+  #       .fns  = list(~srvyr::survey_mean(
+  #         .x, na.rm = FALSE, vartype = c("se", "ci"),
+  #         proportion = FALSE, level = clevel, df = Inf
+  #       ))
+  #     )
+  #   ) |>
+  #   ## srvyr list-output suffix: _1 -> _1_ (placeholder, resolved in step 11)
+  #   dplyr::rename_with(~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1"))
+  #
+  # message("survey_mean(): ", round(difftime(Sys.time(), t0, units = "secs"), 1), "s")
+
+  ## !!! TESTING MAP OVER MEASURES TO INC PROGRESS BAR
   t0 <- Sys.time()
 
-  out_mean <- design |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
-    dplyr::summarise(
-      dplyr::across(
-        .cols = dplyr::any_of(measures),
-        .fns  = list(~srvyr::survey_mean(
-          .x, na.rm = FALSE, vartype = c("se", "ci"),
-          proportion = FALSE, level = clevel, df = Inf
+  out_mean <- purrr::map(measures, function(m){
+
+    tt <- tryCatch(
+      {
+        design |>
+          dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
+          dplyr::summarise(
+            dplyr::across(
+              .cols = dplyr::any_of(m),
+              .fns  = list(~srvyr::survey_mean(
+                .x, na.rm = FALSE, vartype = c("se", "ci"),
+                proportion = FALSE, level = clevel, df = Inf
+              ))
+            )
+          ) |>
+          ## srvyr list-output suffix: _1 -> _1_ (placeholder, resolved in step 11)
+          dplyr::rename_with(~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1"))
+      },
+      warning = function(w) {
+        msg <- conditionMessage(w)
+        message(sprintf(
+          "[%s] WARNING reading %s \u2014 %s",
+          format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m, msg
         ))
-      )
-    ) |>
-    ## srvyr list-output suffix: _1 -> _1_ (placeholder, resolved in step 11)
-    dplyr::rename_with(~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1"))
+        read_errors[[m]] <<- msg  # <<- writes to the enclosing map() env
+        NULL
+        #invokeRestart("muffleWarning")  # log and resume; do not abort
+      },
+      error = function(e) {
+        msg <- conditionMessage(e)
+        message(sprintf(
+          "[%s] ERROR reading %s \u2014 %s",
+          format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m, msg
+        ))
+        read_errors[[m]] <<- msg  # <<- writes to the enclosing map() env
+        NULL
+      }
+    )
+
+    ## Log success (only when the file was actually parsed)
+    if (!is.null(tt)) {
+      message(sprintf(
+        "[%s] Computed %s",
+        format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m
+      ))
+    }
+
+    ## Update progress bar when running inside Shiny
+    # if (!is.null(.pb_session) && !is.null(.pb_id)) {
+    #   shinyWidgets::updateProgressBar(
+    #     session = .pb_session,
+    #     id      = .pb_id,
+    #     value   = round(pct)
+    #   )
+    # }
+    #
+    # Sys.sleep(0.1)
+
+    tt
+
+  }) |> purrr::reduce(dplyr::left_join, by = dims)
 
   message("survey_mean(): ", round(difftime(Sys.time(), t0, units = "secs"), 1), "s")
+
+  ## !!!
 
   ## 10. Join expansion areas ------
   if (length(dims_at_bu) == 0) {
