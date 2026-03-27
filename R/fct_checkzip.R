@@ -32,7 +32,7 @@ fct_checkzip <- function(.path){
 
   ## Check is files names match the checklist
   present  <- checklist$item %in% zip_content
-  zipcheck <- as.list(setNames(present, paste0("has_", checklist$check)))
+  zipcheck <- as.list(stats::setNames(present, paste0("has_", checklist$check)))
   zipmissing <- checklist$item[!present]
 
   ## Check number of entity tables

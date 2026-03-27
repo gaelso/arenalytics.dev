@@ -320,6 +320,8 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   ## !!! TESTING MAP OVER MEASURES TO INC PROGRESS BAR
   t0 <- Sys.time()
 
+  read_errors <- character(0)
+
   out_mean <- purrr::map(measures, function(m){
 
     tt <- tryCatch(

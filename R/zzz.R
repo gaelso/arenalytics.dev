@@ -30,7 +30,7 @@
     "survey.adjust.domain.lonely",
     "survey.lonely.psu"
   )
-  options(setNames(
+  options(stats::setNames(
     vector("list", length(op)),  # list of NULLs
     op
   ))
