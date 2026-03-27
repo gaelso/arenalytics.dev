@@ -205,13 +205,27 @@ mod_tool_server <- function(id, rv) {
         "Sub-unit dimensions"  = make_grp(FALSE)
       ))
 
-      selectizeInput(
-        inputId  = ns("analysis_sel_dims"),
-        label    = "Reporting dimensions",
-        choices  = choices,
-        multiple = TRUE,
-        options  = list(placeholder = "Select dimensions...")
+      ## $$$
+      ## selectizeInput(
+      ##   inputId  = ns("analysis_sel_dims"),
+      ##   label    = "Reporting dimensions",
+      ##   choices  = choices,
+      ##   multiple = TRUE,
+      ##   options  = list(placeholder = "Select dimensions...")
+      ## )
+      shinyWidgets::virtualSelectInput(
+        inputId          = ns("analysis_sel_dims"),
+        label            = "Reporting dimensions",
+        choices          = choices,
+        selected         = NULL,
+        multiple         = TRUE,
+        showValueAsTags = TRUE,
+        search           = TRUE,
+        placeholder      = "Select dimensions...",
+        dropboxWrapper   = "body",
+        width            = "100%"
       )
+      ## $$$
     })
 
     ## . + Stratum note ------
@@ -453,13 +467,26 @@ mod_tool_server <- function(id, rv) {
       filter_inputs <- lapply(rv$analysis$dims, function(d) {
         lbl  <- dim_meta |> dplyr::filter(.data$name == d) |> dplyr::pull("label") |> dplyr::first()
         vals <- sort(unique(df[[d]]))
-        selectizeInput(
-          inputId  = ns(paste0("filter_dim__", d)),
-          label    = lbl,
-          choices  = stats::setNames(vals, vals),
-          selected = vals,          ## all selected by default → no filter
-          multiple = TRUE
+        ## $$$
+        ## selectizeInput(
+        ##   inputId  = ns(paste0("filter_dim__", d)),
+        ##   label    = lbl,
+        ##   choices  = stats::setNames(vals, vals),
+        ##   selected = vals,
+        ##   multiple = TRUE
+        ## )
+        shinyWidgets::virtualSelectInput(
+          inputId          = ns(paste0("filter_dim__", d)),
+          label            = lbl,
+          choices          = stats::setNames(vals, vals),
+          selected         = vals,          ## all selected by default → no filter
+          multiple         = TRUE,
+          showValueAsTags  = TRUE,
+          search           = TRUE,
+          dropboxWrapper   = "body",
+          width            = "100%"
         )
+        ## $$$
       })
 
       if (length(filter_inputs) == 0) return(NULL)
