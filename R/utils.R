@@ -12,8 +12,6 @@
 #'   \code{categoryName}, \code{source}, \code{dimension_baseunit},
 #'   \code{stratum}.
 #'
-#' @importFrom dplyr filter select mutate left_join coalesce na_if if_else pull
-#' @importFrom tibble tibble as_tibble
 #' @importFrom rlang .data
 #'
 #' @noRd

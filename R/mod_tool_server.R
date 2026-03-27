@@ -1,7 +1,6 @@
 #' Tool module server function
 #'
 #' @importFrom rlang .data
-#' @importFrom stats setNames
 #'
 #' @noRd
 mod_tool_server <- function(id, rv) {
@@ -114,7 +113,7 @@ mod_tool_server <- function(id, rv) {
       if (length(names(rv$inputs$data)) > 0) {
         rv$insights$entities <- names(rv$inputs$data) |> stringr::str_subset("OLAP_")
         rv$insights$entities_labs <- rv$insights$entities |> stringr::str_remove("OLAP_")
-        rv$insights$entities_named <- setNames(rv$insights$entities, rv$insights$entities_labs)
+        rv$insights$entities_named <- stats::setNames(rv$insights$entities, rv$insights$entities_labs)
       } else {
         rv$insights$entities_named <- NULL
       }
@@ -127,7 +126,7 @@ mod_tool_server <- function(id, rv) {
       rv$insights$vars <- rv$inputs$data$chain_summary$resultVariables |>
         dplyr::filter(.data$entity == stringr::str_remove(input$insight_sel_entity, "OLAP_")) |>
         dplyr::filter(.data$areaBased)
-      rv$insights$vars_named <- setNames(rv$insights$vars$name, rv$insights$vars$label)
+      rv$insights$vars_named <- stats::setNames(rv$insights$vars$name, rv$insights$vars$label)
 
       ## USING SchemaSummary - WRONG, should use chain_summary$resultVariables
       # rv$insights$vars <- rv$inputs$data$SchemaSummary |>
