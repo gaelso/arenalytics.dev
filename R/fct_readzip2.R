@@ -16,6 +16,8 @@
 #'   Default `NULL` (progress bar is only updated inside a Shiny context).
 #' @param .pb_id The widget ID for [shinyWidgets::updateProgressBar()].
 #'   Default `NULL`.
+#' @param .entity_pref A character describing how OpenForis Arena prefix entity
+#'   tables. Default "MAU_".
 #'
 #' @returns A named list of entity data frames and survey descriptors, or
 #'   `NULL` if the archive itself cannot be opened. Each element is either the
@@ -38,10 +40,11 @@
 #' }
 #'
 #' @export
-fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
+fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL, .entity_pref = "MAU_") {
 
   ## !!! FOR TESTING ONLY
-  # .path = "inst/extdata/OLAP_shiny_demo_corrupted.zip" ; .pb_session = NULL ; .pb_id = NULL
+  # .path = "inst/extdata/OLAP_shiny_demo.zip" ; .pb_session = NULL ; .pb_id = NULL ; .entity_pref = "OLAP_"
+  # .path = "inst/extdata/OLAP_shiny_demo_corrupted.zip" ; .pb_session = NULL ; .pb_id = NULL ; .entity_pref = "OLAP_"
   # !!!
 
 
@@ -136,7 +139,7 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
   file_names <- stringr::str_replace_all(file_names, "olap", "OLAP")
   names(out) <- file_names
 
-  ## -- 3. Emit a final summary message so the Shiny console div shows outcome --
+  ## -- 3. Emit a final summary message so the Shiny console div shows outcome -----
   ## This is captured by withCallingHandlers() in mod_tool_server the same way
   ## as the per-file messages above.
   if (length(read_errors) > 0) {
@@ -156,6 +159,32 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL) {
 
   ## -- 4. Attach error log as an attribute so callers can inspect it ------------
   attr(out, ".errors") <- read_errors
+
+
+  ## -- 5. add variable types to the output ------
+  if (length(read_errors == 0)) {
+
+    entity_names <- file_names |>
+      stringr::str_subset(.entity_pref) |>
+      stringr::str_remove(.entity_pref)
+
+    vartype <- purrr::map(entity_names, function(x){
+      fct_varinfo(.zip = out, .entity = x)
+    })
+
+    names(vartype) <- paste0("vartype_", entity_names)
+
+    out <- c(out, vartype)
+
+    message(sprintf(
+      "[%s] \u2713 Variables type generated from metadata.",
+      format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+      length(out)
+    ))
+
+  }
+
+
 
   out
 

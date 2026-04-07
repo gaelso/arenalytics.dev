@@ -90,26 +90,25 @@ mod_tool_UI <- function(id, i18n, .tr){
   )
 
 
-  ## . + Acc2: Insights --------
-  ac2 <-  accordion_panel(
-    title = "Get insights",
-    icon = bsicons::bs_icon("2-circle"),
-    value = ns("ac2"),
-
-    ## Content
-    div(
-      id = ns("msg_tmp"),
-      p("Under construction"),
-      class = "text-warning",
-      style = "font-style: italic;"
-    ),
-
-    div(
-      id = ns("insight_filters"),
-      uiOutput(outputId = ns("insight_entity")),
-      uiOutput(outputId = ns("insight_vars"))
-    )
-  )
+  ## $$$
+  ## . + Acc2: Insights — REMOVED (entity/variable selection moved into Insights panel)
+  ## ac2 <-  accordion_panel(
+  ##   title = "Get insights",
+  ##   icon = bsicons::bs_icon("2-circle"),
+  ##   value = ns("ac2"),
+  ##   div(
+  ##     id = ns("msg_tmp"),
+  ##     p("Under construction"),
+  ##     class = "text-warning",
+  ##     style = "font-style: italic;"
+  ##   ),
+  ##   div(
+  ##     id = ns("insight_filters"),
+  ##     uiOutput(outputId = ns("insight_entity")),
+  ##     uiOutput(outputId = ns("insight_vars"))
+  ##   )
+  ## )
+  ## $$$
 
   ## . + Accordion 3 -------------------------------------------
   ac3 <-  accordion_panel(
@@ -201,19 +200,64 @@ mod_tool_UI <- function(id, i18n, .tr){
   ))
 
   ## . . + Data insights -----
+
   insight_p_title <- tags$h5(
-    tags$span("Survey name: ", style = "font-weight:700;"), textOutput(ns("insight_title"), inline = TRUE)
+    tags$span("Survey name: ", style = "font-weight:700;"),
+    textOutput(ns("insight_title"), inline = TRUE)
   )
 
-  insight_tab_chain <- card(
-    h5("Number of results variables per Entity"),
-    tableOutput(outputId = ns("insight_chain"))
+  ## $$$
+
+  ## Entity selector — choices populated server-side on data load
+  insight_entity_sel <- selectInput(
+    inputId  = ns("insight_sel_entity"),
+    label    = "Entity",
+    choices  = NULL
   )
 
-  insight_out_summary <- card(
-    h5("Summary of the selected numerical results variables"),
-    verbatimTextOutput(outputId = ns("insight_summary"))
+  ## Row 1: Base-unit dimensions
+  insight_row_bu <- card(
+    min_height = "200px",
+    card_header(bsicons::bs_icon("diagram-3"), " Base-unit dimensions"),
+    selectizeInput(
+      inputId  = ns("insight_bu_sel"),
+      label    = NULL,
+      choices  = NULL,
+      multiple = TRUE,
+      options  = list(placeholder = "Select dimensions...")
+    ),
+    uiOutput(ns("insight_bu_out"))
   )
+
+  ## Row 2: Sub-unit dimensions
+  insight_row_sub <- card(
+    min_height = "200px",
+    card_header(bsicons::bs_icon("diagram-2"), " Sub-unit dimensions"),
+    selectizeInput(
+      inputId  = ns("insight_sub_sel"),
+      label    = NULL,
+      choices  = NULL,
+      multiple = TRUE,
+      options  = list(placeholder = "Select dimensions...")
+    ),
+    uiOutput(ns("insight_sub_out"))
+  )
+
+  ## Row 3: Measures
+  insight_row_meas <- card(
+    min_height = "200px",
+    card_header(bsicons::bs_icon("bar-chart"), " Measures"),
+    selectizeInput(
+      inputId  = ns("insight_meas_sel"),
+      label    = NULL,
+      choices  = NULL,
+      multiple = TRUE,
+      options  = list(placeholder = "Select measures...")
+    ),
+    uiOutput(ns("insight_meas_out"))
+  )
+
+  ## $$$
 
 
   ## . + Panel: analysis ------
@@ -282,7 +326,10 @@ mod_tool_UI <- function(id, i18n, .tr){
         accordion(
           open = TRUE,
           multiple = TRUE,
-          ac1, ac2, ac3, ac4
+          ## $$$
+          ## ac2 removed
+          ac1, ac3, ac4
+          ## $$$
         )
       ),
 
@@ -300,9 +347,15 @@ mod_tool_UI <- function(id, i18n, .tr){
         shinyjs::hidden(div(
           id = ns("panel_insights"),
           tags$h3("Data insights"),
+          ## $$$
           insight_p_title,
           br(),
-          layout_column_wrap(insight_tab_chain, insight_out_summary, width = "300px")
+          insight_entity_sel,
+          hr(),
+          insight_row_bu,
+          insight_row_sub,
+          insight_row_meas
+          ## $$$
         ))
       ),
 

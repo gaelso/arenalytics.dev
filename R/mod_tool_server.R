@@ -42,7 +42,7 @@ mod_tool_server <- function(id, rv) {
     })
 
     ## + Acc1: read data ======
-    ## . + Show progress -----
+    ## . + Show progress and insights -----
     ## Action: show progress in panel insights
     observeEvent(input$btn_read_data, {
 
@@ -105,60 +105,26 @@ mod_tool_server <- function(id, rv) {
       shinyjs::show("panel_insights")
     })
 
-    ## + Acc2: Insights ======
-    ## . + Create labels for pickerInput() ------
+    ## + Entities observer — shared by Insights panel and Acc3 ======
     observe({
       req(rv$inputs$data)
 
       if (length(names(rv$inputs$data)) > 0) {
-        rv$insights$entities <- names(rv$inputs$data) |> stringr::str_subset("OLAP_")
-        rv$insights$entities_labs <- rv$insights$entities |> stringr::str_remove("OLAP_")
+        rv$insights$entities      <- names(rv$inputs$data) |> stringr::str_subset("OLAP_")
+        rv$insights$entities_labs <- rv$insights$entities  |> stringr::str_remove("OLAP_")
         rv$insights$entities_named <- stats::setNames(rv$insights$entities, rv$insights$entities_labs)
       } else {
         rv$insights$entities_named <- NULL
       }
-
     })
 
-    observeEvent(input$insight_sel_entity, {
-      req(rv$inputs$data$schema_summary, rv$inputs$data$chain_summary)
-
-      rv$insights$vars <- rv$inputs$data$chain_summary$resultVariables |>
-        dplyr::filter(.data$entity == stringr::str_remove(input$insight_sel_entity, "OLAP_")) |>
-        dplyr::filter(.data$areaBased)
-      rv$insights$vars_named <- stats::setNames(rv$insights$vars$name, rv$insights$vars$label)
-
-      ## USING SchemaSummary - WRONG, should use chain_summary$resultVariables
-      # rv$insights$vars <- rv$inputs$data$SchemaSummary |>
-      #   dplyr::filter(parentEntity == stringr::str_remove(input$insight_sel_entity, "OLAP_")) |>
-      #   dplyr::filter(type != "text") |>
-      #   dplyr::select(name, paste0("label_", rv$inputs$data$chain_summary$selectedLanguage))
-      #   # dplyr::select(name, paste0("label_", i18n$get_translation_language())) ## Get app language to set label
-      # rv$insights$vars_named <- setNames(rv$insights$vars[[1]], rv$insights$vars[[2]])
-
-    })
-
-    ## . + Make pickerInput ------
-    output$insight_entity <- renderUI({
-      req(rv$inputs$data, rv$insights$entities_named)
-      selectInput(
-        inputId = ns("insight_sel_entity"),
-        label = "Entities",
-        choices = rv$insights$entities_named,
-        multiple = FALSE
-        )
-    })
-
-    output$insight_vars <- renderUI({
-      req(rv$inputs$data, rv$insights$vars_named)
-      selectInput(
-        inputId = ns("insight_sel_vars"),
-        label = "Area-based Variables",
-        choices = rv$insights$vars_named,
-        selected = rv$insights$vars_named,
-        multiple = TRUE
-      )
-    })
+    ## $$$
+    ## Acc2 entity/var selectors — removed (selection moved into Insights panel cards)
+    ##
+    ## observeEvent(input$insight_sel_entity, { ... })
+    ## output$insight_entity <- renderUI({ ... })
+    ## output$insight_vars   <- renderUI({ ... })
+    ## $$$
 
 
     ## + Acc3: Run analysis ======
@@ -329,34 +295,41 @@ mod_tool_server <- function(id, rv) {
       )
     })
 
-    ## . + Variables ------
-    output$insight_chain <- renderTable({
+    ## $$$
+    ## output$insight_chain / insight_summary / insight_entity_rows — all replaced below.
+
+    ## . + Populate entity dropdown when data loads ------
+    observe({
+      req(rv$insights$entities_named)
+      updateSelectInput(session, "insight_sel_entity", choices = rv$insights$entities_named)
+    })
+
+    ## . + Populate the three selectors when entity changes ------
+    observeEvent(input$insight_sel_entity, {
       req(rv$inputs$data)
 
-      rv$inputs$data$chain_summary$resultVariables |>
-        dplyr::filter(.data$active) |>
-        dplyr::group_by(.data$entity, .data$areaBased) |>
-        dplyr::summarise(n_var = dplyr::n(), .groups = "drop") |>
-        dplyr::mutate(areaBased = dplyr::if_else(.data$areaBased, "areaBased", "notAreaBased")) |>
-        tidyr::pivot_wider(names_from = .data$areaBased, values_from = .data$n_var) |>
-        dplyr::mutate(
-          areaBased = dplyr::if_else(is.na(.data$areaBased), 0, .data$areaBased),
-          notAreaBased = dplyr::if_else(is.na(.data$notAreaBased), 0, .data$notAreaBased)
+      entity   <- stringr::str_remove(input$insight_sel_entity, "OLAP_")
+      dim_meta <- fct_get_dim_meta(.zip = rv$inputs$data, .entity = entity)
+
+      measures_meta <- tibble::as_tibble(rv$inputs$data$chain_summary$resultVariables) |>
+        dplyr::filter(
+          .data$entity == entity,
+          .data$areaBased,
+          .data$active,
+          .data$type == "Q"
         )
 
+      bu_choices   <- with(dplyr::filter(dim_meta, .data$dimension_baseunit == TRUE,  !.data$stratum),
+                           stats::setNames(name, label))
+      sub_choices  <- with(dplyr::filter(dim_meta, .data$dimension_baseunit == FALSE, !.data$stratum),
+                           stats::setNames(name, label))
+      meas_choices <- with(measures_meta, stats::setNames(name, label))
+
+      updateSelectizeInput(session, "insight_bu_sel",   choices = bu_choices,   selected = NULL)
+      updateSelectizeInput(session, "insight_sub_sel",  choices = sub_choices,  selected = NULL)
+      updateSelectizeInput(session, "insight_meas_sel", choices = meas_choices, selected = NULL)
     })
-
-    output$insight_summary <- renderPrint({
-      req(
-        rv$inputs$data, input$insight_sel_entity, input$insight_sel_vars,
-        input$insight_sel_vars %in% names(rv$inputs$data[[input$insight_sel_entity]])
-        )
-
-      # rv$insights$entities_named
-      # rv$insights$vars_named
-      summary(rv$inputs$data[[input$insight_sel_entity]][,input$insight_sel_vars])
-
-    })
+    ## $$$
 
     ## + Analysis outputs ======
 
