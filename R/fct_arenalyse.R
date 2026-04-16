@@ -17,6 +17,10 @@
 #'   \code{"tree"}, \code{"plot"}).
 #' @param .dim Character vector. Names of the reporting dimensions to include
 #'   (e.g. \code{c("plot_forest_type", "plot_province")}).
+#' @param .pb_session A Shiny session for [shinyWidgets::updateProgressBar()].
+#'   Default `NULL`.
+#' @param .pb_id The widget ID for [shinyWidgets::updateProgressBar()].
+#'   Default `NULL`.
 #'
 #' @return A named list with two elements:
 #'   \describe{
@@ -31,7 +35,7 @@
 #' @importFrom rlang .data
 #'
 #' @export
-fct_arenalyse <- function(.zip, .entity, .dim) {
+fct_arenalyse <- function(.zip, .entity, .dim, .pb_session = NULL, .pb_id = NULL) {
 
   ## !!! FOR TESTING ONLY
   # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip") ; names(.zip)
@@ -43,7 +47,21 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   # .zip = rv$inputs$data ; .entity = input$analysis_sel_entity ; .dim = input$analysis_sel_dims ; .meta = rv$inputs$var_meta
   ## !!!
 
+  ## ++ ##
+  log_step <- function(text, value = NULL) {
+    message(sprintf("[%s] %s", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), text))
+
+    if (!is.null(value) && !is.null(.pb_session) && !is.null(.pb_id)) {
+      shinyWidgets::updateProgressBar(
+        session = .pb_session,
+        id = .pb_id,
+        value = round(value)
+      )
+    }
+  }
+
   ## 0. Coerce inputs ------
+  log_step(paste0("Preparing analysis for entity '", .entity, "'."), value = 5)
   .zip$chain_summary$resultVariables <- tibble::as_tibble(.zip$chain_summary$resultVariables)
   .zip$schema_summary    <- tibble::as_tibble(.zip$schema_summary)
   .zip$report_dimensions <- tibble::as_tibble(.zip$report_dimensions)
@@ -60,6 +78,8 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
 
   ## Get entity columns metadata
   wt_names <- fct_varinfo(.zip = .zip, .entity = .entity, .entity_prefix = entity_prefix)
+  log_step("Entity metadata loaded.", value = 15)
+  ## ++ ##
 
   # ## 1. Entity labels & wide table ------
   # label_cols <- .zip$schema_summary |>
@@ -176,6 +196,9 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   ## !!! Now mau_baseunit_total, renaming column for backward compatibility
   if ("OLAP_baseunit_total" %in% names(wt)) wt <- wt |> dplyr::rename(mau_baseunit_total = "OLAP_baseunit_total")
 
+  ## ++ ##
+  log_step("Filtering OLAP rows and preparing analysis table.", value = 25)
+  ## ++ ##
 
   df_data <- wt |>
     dplyr::filter(.data$mau_baseunit_total == all_at_bu) |>
@@ -264,6 +287,9 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
 
   ## Drop zero-area strata (area set to 0 ha)
   df_total <- df_total |> dplyr::filter(.data$exp_factor_ != 0)
+  ## ++ ##
+  log_step("Analysis table assembled.", value = 40)
+  ## ++ ##
 
   ## 6. Per-hectare values ------
   df_mean <- df_total |>
@@ -289,6 +315,9 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
       nest      = TRUE,
       variables = dplyr::all_of(c(dims, measures, "exp_factor_"))
     )
+  ## ++ ##
+  log_step("Survey design created.", value = 50)
+  ## ++ ##
 
   ## Remove stratum from reported dimensions if not in the original .dim request
   if (use_strat && !strat_in_dims) {
@@ -336,8 +365,10 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   t0 <- Sys.time()
 
   read_errors <- character(0)
+  measure_n <- length(measures)
 
-  out_mean <- purrr::map(measures, function(m){
+  ## ++ ##
+  out_mean <- purrr::imap(measures, function(m, idx){
 
     tt <- tryCatch(
       {
@@ -358,7 +389,7 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
       warning = function(w) {
         msg <- conditionMessage(w)
         message(sprintf(
-          "[%s] WARNING reading %s \u2014 %s",
+          "[%s] WARNING computing %s \u2014 %s",
           format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m, msg
         ))
         read_errors[[m]] <<- msg  # <<- writes to the enclosing map() env
@@ -368,7 +399,7 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
       error = function(e) {
         msg <- conditionMessage(e)
         message(sprintf(
-          "[%s] ERROR reading %s \u2014 %s",
+          "[%s] ERROR computing %s \u2014 %s",
           format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m, msg
         ))
         read_errors[[m]] <<- msg  # <<- writes to the enclosing map() env
@@ -384,20 +415,15 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
       ))
     }
 
-    ## Update progress bar when running inside Shiny
-    # if (!is.null(.pb_session) && !is.null(.pb_id)) {
-    #   shinyWidgets::updateProgressBar(
-    #     session = .pb_session,
-    #     id      = .pb_id,
-    #     value   = round(pct)
-    #   )
-    # }
-    #
-    # Sys.sleep(0.1)
+    log_step(
+      paste0("Processed measure ", idx, "/", measure_n, ": ", m, "."),
+      value = 50 + (idx / max(measure_n, 1)) * 35
+    )
 
     tt
 
   }) |> purrr::reduce(dplyr::left_join, by = dims)
+  ## ++ ##
 
   message("survey_mean(): ", round(difftime(Sys.time(), t0, units = "secs"), 1), "s")
 
@@ -425,6 +451,9 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
     tidy_srvyr_names()
 
   out_mean <- tidy_srvyr_names(out_mean)
+  ## ++ ##
+  log_step("Joining expansion areas and computing totals.", value = 90)
+  ## ++ ##
 
   ## 12. Polish outputs ------
   polish <- function(df) {
@@ -488,5 +517,8 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
     out_total <- dplyr::left_join(out_total, psu_counts, by = "JOIN_COL")
   }
 
+  ## ++ ##
+  log_step("Analysis completed.", value = 100)
   list(MEANS = out_mean, TOTALS = out_total)
+  ## ++ ##
 }

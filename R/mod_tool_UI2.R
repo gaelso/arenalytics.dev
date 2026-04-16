@@ -229,22 +229,14 @@ mod_tool_UI2 <- function(id, i18n, .tr){
     )
   )
 
+  ## ++ ##
   ## Row 3: Measures
   insight_row_meas <- card(
-    min_height = "200px",
+    min_height = "160px",
     card_header(bsicons::bs_icon("bar-chart"), " Measures"),
-    layout_columns(
-      col_widths = c(6, 6),
-      shinyWidgets::checkboxGroupButtons(
-        inputId   = ns("insight_meas_sel"),
-        label     = NULL,
-        choices   = character(0),
-        individual = TRUE,
-        size      = "sm"
-      ),
-      uiOutput(ns("insight_meas_out"))
-    )
+    uiOutput(ns("insight_meas_out"))
   )
+  ## ++ ##
 
   ## $$$
 
@@ -314,6 +306,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
 
         ## $$$
 
+        ## ++ ##
         ## No-results message (visible until first analysis is run)
         div(
           id    = ns("analysis_no_result"),
@@ -322,6 +315,24 @@ mod_tool_UI2 <- function(id, i18n, .tr){
           class = "text-warning",
           style = "font-style: italic;"
         ),
+
+        ## Analysis progress - shown while fct_arenalyse() is running
+        shinyjs::hidden(div(
+          id = ns("analysis_progress"),
+          h3("Running analysis"),
+          shinyWidgets::progressBar(
+            id = ns("analysis_progress_bar"),
+            value = 0,
+            title = "Running analysis",
+            display_pct = TRUE
+          ),
+          br(),
+          div(
+            id = ns("analysis_console"),
+            style =
+              "height: 300px; overflow-y: auto; background-color:#f7f7f7; font-family:monospace; font-size: small;"
+          )
+        )),
 
         ## Results layout - hidden until analysis completes
         shinyjs::hidden(div(
@@ -369,6 +380,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
           )
 
         ))
+        ## ++ ##
 
         ## $$$
       )

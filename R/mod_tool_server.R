@@ -436,7 +436,8 @@ mod_tool_server <- function(id, rv) {
       df       <- rv$analysis$result$MEANS
       dim_meta <- rv$analysis$dim_meta
 
-      filter_inputs <- lapply(rv$analysis$dims, function(d) {
+      ## ++ ##
+      filter_inputs <- purrr::map(rv$analysis$dims, function(d) {
         lbl  <- dim_meta |> dplyr::filter(.data$name == d) |> dplyr::pull("label") |> dplyr::first()
         vals <- sort(unique(df[[d]]))
         ## $$$
@@ -460,6 +461,7 @@ mod_tool_server <- function(id, rv) {
         )
         ## $$$
       })
+      ## ++ ##
 
       if (length(filter_inputs) == 0) return(NULL)
 
@@ -474,10 +476,12 @@ mod_tool_server <- function(id, rv) {
     ## (replaces get_extra_filter_vals — covers every dim, not just unallocated)
     get_filter_vals <- function() {
       req(rv$analysis$dims)
-      lapply(
+      ## ++ ##
+      purrr::map(
         stats::setNames(rv$analysis$dims, rv$analysis$dims),
         function(d) input[[paste0("filter_dim__", d)]]
       )
+      ## ++ ##
     }
     ## $$$
 
@@ -556,4 +560,3 @@ mod_tool_server <- function(id, rv) {
   })
 
 }
-

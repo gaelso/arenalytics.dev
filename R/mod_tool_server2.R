@@ -234,6 +234,7 @@ mod_tool_server2 <- function(id, rv) {
       )
     })
 
+    ## ++ ##
     ## . + Run fct_arenalyse() ------
     observeEvent(input$btn_run_analysis, {
       dims_sel <- c(input$analysis_bu_dims, input$analysis_sub_dims)
@@ -260,12 +261,36 @@ mod_tool_server2 <- function(id, rv) {
         dplyr::filter(report_type == "measure")
 
       shinyjs::disable("btn_run_analysis")
+      shinyjs::hide("analysis_no_result")
+      shinyjs::hide("analysis_results")
+      shinyjs::show("analysis_progress")
+      shinyjs::html("analysis_console", "")
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "analysis_progress_bar",
+        value = 0
+      )
 
       result <- tryCatch(
-        withProgress(message = "Running analysis...", value = 0.5, {
-          fct_arenalyse(.zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = dims_sel)
-        }),
+        withCallingHandlers(
+          {
+            fct_arenalyse(
+              .zip = rv$inputs$data,
+              .entity = input$analysis_sel_entity,
+              .dim = dims_sel,
+              .pb_session = session,
+              .pb_id = "analysis_progress_bar"
+            )
+          },
+          message = function(m) {
+            shinyjs::html(id = "analysis_console", html = paste0(m$message, '<br>'), add = TRUE)
+            invokeRestart("muffleMessage")
+          }
+        ),
         error = function(e) {
+          shinyjs::hide("analysis_progress")
+          shinyjs::toggle("analysis_results", condition = !is.null(rv$analysis$result))
+          shinyjs::toggle("analysis_no_result", condition = is.null(rv$analysis$result))
           shinyWidgets::sendSweetAlert(
             session = session, title = "Analysis error",
             text = e$message, type = "error"
@@ -287,8 +312,11 @@ mod_tool_server2 <- function(id, rv) {
         rv$analysis$result <- result
         rv$analysis$dims   <- dims_sel
         rv$analysis$entity <- input$analysis_sel_entity
+
+        shinyjs::hide("analysis_progress")
       }
     })
+    ## ++ ##
 
     ## $$$
 
@@ -318,7 +346,8 @@ mod_tool_server2 <- function(id, rv) {
       updateSelectInput(session, "insight_sel_entity", choices = rv$insights$entities_named)
     })
 
-    ## . + Populate the three selectors when entity changes ------
+    ## ++ ##
+    ## . + Populate the insight controls when entity changes ------
     observeEvent(input$insight_sel_entity, {
       req(rv$inputs$data)
 
@@ -352,14 +381,15 @@ mod_tool_server2 <- function(id, rv) {
       rv$insights$bu_choices    <- stats::setNames(dim_meta_bu$name, dim_meta_bu$label)
       rv$insights$sub_choices   <- stats::setNames(dim_meta_sub$name, dim_meta_sub$label)
       rv$insights$meas_choices  <- stats::setNames(meas_meta$name, meas_meta$label)
+      rv$insights$dim_meta      <- rv$inputs$var_meta[[input$insight_sel_entity]]
       rv$insights$entity_table  <- rv$inputs$data[[entity_name]] |> tibble::as_tibble()
 
       shinyWidgets::updateCheckboxGroupButtons(session, "insight_bu_sel",   choices = rv$insights$bu_choices,   selected = character(0))
       shinyWidgets::updateCheckboxGroupButtons(session, "insight_sub_sel",  choices = rv$insights$sub_choices,  selected = character(0))
-      shinyWidgets::updateCheckboxGroupButtons(session, "insight_meas_sel", choices = rv$insights$meas_choices, selected = character(0))
     })
-    ## $$$
+    ## ++ ##
 
+    ## ++ ##
     ## . + Summary outputs — right column of each insight card ------
 
     ## Helper: placeholder shown when nothing is selected
@@ -369,53 +399,119 @@ mod_tool_server2 <- function(id, rv) {
       "No selection."
     )
 
-    ## Helper: dimension summary — table() per selected column
-    ## width = 60 forces R to wrap into paired label/value blocks (console style)
-    make_dim_summary <- function(sel, choices, tbl) {
-      if (is.null(sel) || length(sel) == 0) return(insight_no_sel)
-      lines <- purrr::map(sel, \(v) {
-        lbl <- names(choices)[choices == v]
-        op  <- options(width = 60)
-        raw <- capture.output(print(table(tbl[[v]], useNA = "ifany")))
-        options(op)
-        c(paste0("\u2500\u2500 ", lbl, " \u2500\u2500"), raw, "")
-      }) |>
-        purrr::list_c()
-      tags$pre(style = "font-size: 0.78em; white-space: pre-wrap;",
-               paste(lines, collapse = "\n"))
+    get_dim_label_lookup <- function(meta_row, categories, lang) {
+      cat_name <- meta_row$categoryName[[1]]
+
+      if (is.na(cat_name) || !nzchar(cat_name) || is.null(categories[[cat_name]])) {
+        return(NULL)
+      }
+
+      label_col <- paste0("label_", lang)
+      cat_tbl <- tibble::as_tibble(categories[[cat_name]])
+      lbl_col <- if (label_col %in% names(cat_tbl)) label_col else "label"
+
+      stats::setNames(
+        as.character(cat_tbl[[lbl_col]]),
+        as.character(cat_tbl$code)
+      )
     }
 
-    ## Helper: measure summary — summary() per selected column
-    ## as.numeric() because OLAP measure columns are stored as character
-    make_meas_summary <- function(sel, choices, tbl) {
+    make_dim_summary <- function(sel, meta, tbl, categories, lang) {
       if (is.null(sel) || length(sel) == 0) return(insight_no_sel)
-      lines <- purrr::map(sel, \(v) {
-        lbl <- names(choices)[choices == v]
-        raw <- capture.output(summary(as.numeric(tbl[[v]])))
-        c(paste0("\u2500\u2500 ", lbl, " \u2500\u2500"), raw, "")
-      }) |>
-        purrr::list_c()
-      tags$pre(style = "font-size: 0.78em; white-space: pre-wrap;",
-               paste(lines, collapse = "\n"))
+
+      sections <- purrr::map(sel, function(v) {
+        meta_row <- meta |>
+          dplyr::filter(.data$name == v) |>
+          dplyr::slice(1)
+
+        values_raw <- tbl[[v]]
+        has_na <- any(is.na(values_raw) | values_raw == "")
+
+        lookup <- get_dim_label_lookup(meta_row, categories, lang)
+
+        values_clean <- values_raw |>
+          as.character() |>
+          (\(x) x[!is.na(x) & nzchar(x)])() |>
+          unique() |>
+          sort()
+
+        if (!is.null(lookup)) {
+          values_clean <- dplyr::coalesce(
+            unname(lookup[values_clean]),
+            values_clean
+          )
+        }
+
+        tags$div(
+          style = "margin-bottom: 0.85rem;",
+          tags$div(
+            tags$strong(meta_row$label[[1]]),
+            if (has_na) tags$span(
+              " NA present",
+              class = "badge text-bg-danger",
+              style = "margin-left: 0.5rem;"
+            )
+          ),
+          if (length(values_clean) > 0) {
+            tags$div(
+              style = "font-size: 0.85em; margin-top: 0.35rem;",
+              paste(values_clean, collapse = ", ")
+            )
+          } else {
+            tags$p(
+              class = "text-muted fst-italic",
+              style = "font-size: 0.85em; margin-top: 0.35rem;",
+              "No non-missing classes."
+            )
+          }
+        )
+      })
+
+      tagList(sections)
+    }
+
+    make_meas_summary <- function(choices) {
+      if (is.null(choices) || length(choices) == 0) {
+        return(tags$p(
+          class = "text-muted fst-italic",
+          style = "font-size: 0.85em;",
+          "No measures available."
+        ))
+      }
+
+      tags$ul(
+        style = "font-size: 0.85em; margin-bottom: 0;",
+        purrr::map(names(choices), tags$li)
+      )
     }
 
     output$insight_bu_out <- renderUI({
-      req(rv$insights$bu_choices, rv$insights$entity_table)
-      make_dim_summary(input$insight_bu_sel, rv$insights$bu_choices,
-                       rv$insights$entity_table)
+      req(rv$insights$bu_choices, rv$insights$entity_table, rv$insights$dim_meta, rv$inputs$data$categories)
+      make_dim_summary(
+        sel = input$insight_bu_sel,
+        meta = rv$insights$dim_meta,
+        tbl = rv$insights$entity_table,
+        categories = rv$inputs$data$categories,
+        lang = rv$inputs$data$chain_summary$selectedLanguage %||% "en"
+      )
     })
 
     output$insight_sub_out <- renderUI({
-      req(rv$insights$sub_choices, rv$insights$entity_table)
-      make_dim_summary(input$insight_sub_sel, rv$insights$sub_choices,
-                       rv$insights$entity_table)
+      req(rv$insights$sub_choices, rv$insights$entity_table, rv$insights$dim_meta, rv$inputs$data$categories)
+      make_dim_summary(
+        sel = input$insight_sub_sel,
+        meta = rv$insights$dim_meta,
+        tbl = rv$insights$entity_table,
+        categories = rv$inputs$data$categories,
+        lang = rv$inputs$data$chain_summary$selectedLanguage %||% "en"
+      )
     })
 
     output$insight_meas_out <- renderUI({
-      req(rv$insights$meas_choices, rv$insights$entity_table)
-      make_meas_summary(input$insight_meas_sel, rv$insights$meas_choices,
-                        rv$insights$entity_table)
+      req(rv$insights$meas_choices)
+      make_meas_summary(rv$insights$meas_choices)
     })
+    ## ++ ##
 
     ## + Analysis outputs ======
 
@@ -550,7 +646,8 @@ mod_tool_server2 <- function(id, rv) {
       df       <- rv$analysis$result$MEANS
       dim_meta <- rv$analysis$dim_meta
 
-      filter_inputs <- lapply(rv$analysis$dims, function(d) {
+      ## ++ ##
+      filter_inputs <- purrr::map(rv$analysis$dims, function(d) {
         lbl  <- dim_meta |> dplyr::filter(.data$name == d) |> dplyr::pull("label") |> dplyr::first()
         vals <- sort(unique(df[[d]]))
         ## $$$
@@ -574,6 +671,7 @@ mod_tool_server2 <- function(id, rv) {
         )
         ## $$$
       })
+      ## ++ ##
 
       if (length(filter_inputs) == 0) return(NULL)
 
@@ -588,10 +686,12 @@ mod_tool_server2 <- function(id, rv) {
     ## (replaces get_extra_filter_vals — covers every dim, not just unallocated)
     get_filter_vals <- function() {
       req(rv$analysis$dims)
-      lapply(
+      ## ++ ##
+      purrr::map(
         stats::setNames(rv$analysis$dims, rv$analysis$dims),
         function(d) input[[paste0("filter_dim__", d)]]
       )
+      ## ++ ##
     }
     ## $$$
 
@@ -637,4 +737,3 @@ mod_tool_server2 <- function(id, rv) {
   })
 
 }
-
