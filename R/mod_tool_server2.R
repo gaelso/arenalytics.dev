@@ -266,6 +266,13 @@ mod_tool_server2 <- function(id, rv) {
       shinyjs::enable("btn_run_analysis")
 
       if (!is.null(result)) {
+        lang <- rv$inputs$data$chain_summary$selectedLanguage %||% "en"
+        dim_meta  <- rv$analysis$dim_meta
+        cats      <- rv$inputs$data$categories
+
+        result$MEANS  <- replace_dim_labels(result$MEANS,  dim_meta, cats, lang)
+        result$TOTALS <- replace_dim_labels(result$TOTALS, dim_meta, cats, lang)
+
         rv$analysis$result <- result
         rv$analysis$dims   <- input$analysis_sel_dims
         rv$analysis$entity <- input$analysis_sel_entity
@@ -402,6 +409,34 @@ mod_tool_server2 <- function(id, rv) {
     ## + Analysis outputs ======
 
     ## $$$
+
+    ## . + Label replacement helper ------------------------------------------
+    ## Replaces dimension codes with human-readable labels from categories list.
+    ## Iterates over dimension columns present in df; looks up categoryName from
+    ## dim_meta to find the right category table, then maps code → label.
+    replace_dim_labels <- function(df, dim_meta, categories, lang = "en") {
+      label_col <- paste0("label_", lang)
+      dim_cols  <- intersect(
+        dplyr::filter(dim_meta, .data$report_type == "dimension") |> dplyr::pull("name"),
+        names(df)
+      )
+      purrr::reduce(dim_cols, \(acc, col) {
+        cat_name <- dim_meta |>
+          dplyr::filter(.data$name == col) |>
+          dplyr::pull("categoryName") |>
+          dplyr::first()
+        if (is.na(cat_name) || !nzchar(cat_name)) return(acc)
+        cat_tbl <- categories[[cat_name]]
+        if (is.null(cat_tbl)) return(acc)
+        lbl_col <- if (label_col %in% names(cat_tbl)) label_col else "label"
+        lookup  <- stats::setNames(
+          as.character(cat_tbl[[lbl_col]]),
+          as.character(cat_tbl$code)
+        )
+        dplyr::mutate(acc, !!col := dplyr::coalesce(unname(lookup[as.character(.data[[col]])]),
+                                                     as.character(.data[[col]])))
+      }, .init = df)
+    }
 
     ## . + Shared plot builder (local helper) --------------------------------
     ## Called by both MEANS and TOTALS renderPlot to avoid duplication.
