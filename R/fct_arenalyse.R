@@ -40,6 +40,7 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   # .dim
   # .dim <- c("tree_plant_type", "province", "stratum_calc", "dbh_up100_10cm", "cluster_land_use", "cluster_forest_type", "cluster_forest_status")
   # summary(.zip[[paste0("OLAP_", .entity)]])
+  # .zip = rv$inputs$data ; .entity = input$analysis_sel_entity ; .dim = input$analysis_sel_dims ; .meta = rv$inputs$var_meta
   ## !!!
 
   ## 0. Coerce inputs ------
@@ -51,82 +52,91 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   label_language <- paste0("label_", chain$selectedLanguage)
   clevel         <- chain$analysis$pValue
 
-  ## 1. Entity labels & wide table ------
-  label_cols <- .zip$schema_summary |>
-    dplyr::filter(.data$type == "entity") |>
-    dplyr::select(entity = "name", label = dplyr::all_of(label_language))
+  entity_tblname <- stringr::str_subset(names(.zip), .entity)
+  entity_prefix <- stringr::str_remove(entity_tblname, .entity)
 
-  wt_filename <- chain$resultVariables |>
-    dplyr::filter(.data$areaBased, .data$active) |>
-    dplyr::select("entityPath", "entity") |>
-    dplyr::distinct() |>
-    dplyr::mutate(wide_table = paste0("OLAP_", .data$entity)) |>
-    dplyr::left_join(label_cols, by = "entity") |>
-    dplyr::filter(.data$entity == .entity) |>
-    dplyr::pull("wide_table")
+  ## Get entity data
+  wt <- .zip[[entity_tblname]] |> tibble::as_tibble()
 
-  wt <- tibble::as_tibble(.zip[[wt_filename]])
+  ## Get entity columns metadata
+  wt_names <- fct_varinfo(.zip = .zip, .entity = .entity, .entity_prefix = entity_prefix)
 
-  ## 2. Column metadata ------
-  ## Result variables: code dimensions + measures derived from chain
-  rv_meta <- chain$resultVariables |>
-    dplyr::select("name", "type", "categoryName", parentEntity = "entity", "label") |>
-    dplyr::mutate(
-      report_type = dplyr::if_else(.data$type == "Q", "measure", "dimension"),
-      type        = dplyr::if_else(.data$type == "Q", "numeric", "code"),
-      source      = "chain"
-    )
-
-  ## Schema summary: input dimensions
-  ss_meta <- .zip$schema_summary |>
-    dplyr::mutate(
-      categoryName = dplyr::if_else(
-        .data$taxonomyName != "", .data$taxonomyName, .data$categoryName
-      )
-    ) |>
-    dplyr::select(
-      "name", "type", "categoryName", "parentEntity",
-      label = dplyr::all_of(label_language)
-    ) |>
-    dplyr::mutate(report_type = "dimension", source = "input")
-
-  ## Merge: schema covers input dims, rv_meta covers code dims + measures.
-  ## Fields don't overlap; suffix + coalesce handles the seam cleanly.
-  wt_names <- tibble::tibble(name = names(wt)) |>
-    dplyr::left_join(ss_meta, by = "name") |>
-    dplyr::left_join(rv_meta, by = "name", suffix = c("", "_rv")) |>
-    dplyr::mutate(
-      type         = dplyr::coalesce(.data$type,                           .data$type_rv),
-      categoryName = dplyr::coalesce(dplyr::na_if(.data$categoryName, ""), .data$categoryName_rv),
-      parentEntity = dplyr::coalesce(dplyr::na_if(.data$parentEntity, ""), .data$parentEntity_rv),
-      label        = dplyr::coalesce(dplyr::na_if(.data$label, ""),        .data$label_rv),
-      report_type  = dplyr::coalesce(dplyr::na_if(.data$report_type, ""),  .data$report_type_rv),
-      source       = dplyr::coalesce(dplyr::na_if(.data$source, ""),       .data$source_rv)
-    ) |>
-    dplyr::select(-dplyr::ends_with("_rv")) |>
-    dplyr::mutate(
-      dimension_baseunit = dplyr::if_else(.data$parentEntity == .entity, FALSE, TRUE),
-      report_type        = dplyr::if_else(.data$name == "weight", NA_character_, .data$report_type)
-    ) |>
-    ## Separate mutate: dimension_baseunit references the value set above
-    dplyr::mutate(
-      dimension_baseunit = dplyr::if_else(.data$name == "weight", NA, .data$dimension_baseunit)
-    )
-
-  ## Stratum attribute tagging
-  strat_attr_raw <- if (is.null(chain$stratumAttribute)) "" else chain$stratumAttribute
-  wt_names <- wt_names |>
-    dplyr::mutate(stratum = strat_attr_raw != "" & .data$name == strat_attr_raw)
-
-  ## Category type: Flat (F) vs Hierarchical (H — square brackets in categoryName)
-  wt_names <- wt_names |>
-    dplyr::mutate(
-      categoryNameOld = .data$categoryName,
-      categoryType    = dplyr::if_else(
-        stringr::str_detect(.data$categoryName, "(?<=\\[).*(?=\\])"), "H", "F"
-      ),
-      categoryName    = stringr::str_remove(.data$categoryName, "\\[.*")
-    )
+  # ## 1. Entity labels & wide table ------
+  # label_cols <- .zip$schema_summary |>
+  #   dplyr::filter(.data$type == "entity") |>
+  #   dplyr::select(entity = "name", label = dplyr::all_of(label_language))
+  #
+  # wt_filename <- chain$resultVariables |>
+  #   dplyr::filter(.data$areaBased, .data$active) |>
+  #   dplyr::select("entityPath", "entity") |>
+  #   dplyr::distinct() |>
+  #   dplyr::mutate(wide_table = paste0("OLAP_", .data$entity)) |>
+  #   dplyr::left_join(label_cols, by = "entity") |>
+  #   dplyr::filter(.data$entity == .entity) |>
+  #   dplyr::pull("wide_table")
+  #
+  # wt <- tibble::as_tibble(.zip[[wt_filename]])
+  #
+  # ## 2. Column metadata ------
+  # ## Result variables: code dimensions + measures derived from chain
+  # rv_meta <- chain$resultVariables |>
+  #   dplyr::select("name", "type", "categoryName", parentEntity = "entity", "label") |>
+  #   dplyr::mutate(
+  #     report_type = dplyr::if_else(.data$type == "Q", "measure", "dimension"),
+  #     type        = dplyr::if_else(.data$type == "Q", "numeric", "code"),
+  #     source      = "chain"
+  #   )
+  #
+  # ## Schema summary: input dimensions
+  # ss_meta <- .zip$schema_summary |>
+  #   dplyr::mutate(
+  #     categoryName = dplyr::if_else(
+  #       .data$taxonomyName != "", .data$taxonomyName, .data$categoryName
+  #     )
+  #   ) |>
+  #   dplyr::select(
+  #     "name", "type", "categoryName", "parentEntity",
+  #     label = dplyr::all_of(label_language)
+  #   ) |>
+  #   dplyr::mutate(report_type = "dimension", source = "input")
+  #
+  # ## Merge: schema covers input dims, rv_meta covers code dims + measures.
+  # ## Fields don't overlap; suffix + coalesce handles the seam cleanly.
+  # wt_names <- tibble::tibble(name = names(wt)) |>
+  #   dplyr::left_join(ss_meta, by = "name") |>
+  #   dplyr::left_join(rv_meta, by = "name", suffix = c("", "_rv")) |>
+  #   dplyr::mutate(
+  #     type         = dplyr::coalesce(.data$type,                           .data$type_rv),
+  #     categoryName = dplyr::coalesce(dplyr::na_if(.data$categoryName, ""), .data$categoryName_rv),
+  #     parentEntity = dplyr::coalesce(dplyr::na_if(.data$parentEntity, ""), .data$parentEntity_rv),
+  #     label        = dplyr::coalesce(dplyr::na_if(.data$label, ""),        .data$label_rv),
+  #     report_type  = dplyr::coalesce(dplyr::na_if(.data$report_type, ""),  .data$report_type_rv),
+  #     source       = dplyr::coalesce(dplyr::na_if(.data$source, ""),       .data$source_rv)
+  #   ) |>
+  #   dplyr::select(-dplyr::ends_with("_rv")) |>
+  #   dplyr::mutate(
+  #     dimension_baseunit = dplyr::if_else(.data$parentEntity == .entity, FALSE, TRUE),
+  #     report_type        = dplyr::if_else(.data$name == "weight", NA_character_, .data$report_type)
+  #   ) |>
+  #   ## Separate mutate: dimension_baseunit references the value set above
+  #   dplyr::mutate(
+  #     dimension_baseunit = dplyr::if_else(.data$name == "weight", NA, .data$dimension_baseunit)
+  #   )
+  #
+  # ## Stratum attribute tagging
+  # strat_attr_raw <- if (is.null(chain$stratumAttribute)) "" else chain$stratumAttribute
+  # wt_names <- wt_names |>
+  #   dplyr::mutate(stratum = strat_attr_raw != "" & .data$name == strat_attr_raw)
+  #
+  # ## Category type: Flat (F) vs Hierarchical (H — square brackets in categoryName)
+  # wt_names <- wt_names |>
+  #   dplyr::mutate(
+  #     categoryNameOld = .data$categoryName,
+  #     categoryType    = dplyr::if_else(
+  #       stringr::str_detect(.data$categoryName, "(?<=\\[).*(?=\\])"), "H", "F"
+  #     ),
+  #     categoryName    = stringr::str_remove(.data$categoryName, "\\[.*")
+  #   )
 
   ## 3. Analysis configuration ------
   base_uuid    <- paste0(chain$baseUnit, "_uuid")
@@ -136,6 +146,7 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
   all_dim_names <- wt_names |> dplyr::filter(.data$report_type == "dimension") |> dplyr::pull("name")
   measures      <- wt_names |> dplyr::filter(.data$report_type == "measure")   |> dplyr::pull("name")
 
+  strat_attr_raw <- if (is.null(chain$stratumAttribute)) "" else chain$stratumAttribute
   use_strat <- chain$samplingStrategy %in% c(3L, 4L)
   strat_col <- if (use_strat) strat_attr_raw else ""
 
@@ -162,10 +173,14 @@ fct_arenalyse <- function(.zip, .entity, .dim) {
 
   ## 4. Filter & cast analysis data ------
   ## OLAP_baseunit_total flags which rows belong to this aggregation level
+  ## !!! Now mau_baseunit_total, renaming column for backward compatibility
+  if ("OLAP_baseunit_total" %in% names(wt)) wt <- wt |> dplyr::rename(mau_baseunit_total = "OLAP_baseunit_total")
+
+
   df_data <- wt |>
-    dplyr::filter(.data$OLAP_baseunit_total == all_at_bu) |>
+    dplyr::filter(.data$mau_baseunit_total == all_at_bu) |>
     dplyr::mutate(dplyr::across(dplyr::all_of(all_dim_names), as.character)) |>
-    dplyr::select(-"OLAP_baseunit_total")
+    dplyr::select(-"mau_baseunit_total")
 
   ## 5. Build df_total ------
   if (all_at_bu) {

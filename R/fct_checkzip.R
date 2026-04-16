@@ -1,9 +1,11 @@
-#' Check OpenForis Arena OLAP ZIP file integrity
+#' Check OpenForis Arena pre-processed ZIP file integrity
 #'
 #' @description fct_checkzip() checks if the ZIP files uploaded in the master ShinyApp has
 #'              the core files required to run the analysis.
 #'
 #' @param .path a path to the zip file from
+#' @param .entity_prefix A character describing how OpenForis Arena prefix entity
+#'   tables. Default "MAU_".
 #'
 #' @returns A list with TRUE/FALSE.
 #'
@@ -15,11 +17,12 @@
 #' }
 #'
 #' @export
-fct_checkzip <- function(.path){
+fct_checkzip <- function(.path, .entity_prefix){
 
   ## !!! FOR TESTING ONLY
   # .path = "inst/extdata/OLAP_shiny_demo_broken.zip"
   # .path = "inst/extdata/OLAP_shiny_demo.zip"
+  # .entity_prefix = "MAU_"
   # !!!
 
   checklist <- data.frame(
@@ -36,9 +39,9 @@ fct_checkzip <- function(.path){
   zipmissing <- checklist$item[!present]
 
   ## Check number of entity tables
-  nb_entities <- stringr::str_subset(zip_content, pattern = "OLAP_.*\\.csv") |> length()
+  nb_entities <- stringr::str_subset(zip_content, pattern = paste0(.entity_prefix, ".*\\.csv")) |> length()
   zipcheck$has_OLAPentities <- nb_entities > 0
-  if (nb_entities == 0) zipmissing <- c(zipmissing, "OLAP_*.csv")
+  if (nb_entities == 0) zipmissing <- c(zipmissing, paste0(.entity_prefix, "*.csv"))
 
   ## Summary
   zipcheck$all_ok <- all(unlist(zipcheck))
@@ -49,6 +52,4 @@ fct_checkzip <- function(.path){
 
 }
 
-## TEST
-# fct_checkzip(.path = "inst/extdata/OLAP_shiny_demo.zip")
 

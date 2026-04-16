@@ -171,7 +171,7 @@ shiny_run_arenalytics_dev <- function(...) {
         title = i18n$t(.tr$nav_tool),
         value = "tool",
         #icon = icon("mug-hot"),
-        mod_tool_UI("tab_tool", i18n = i18n, .tr = .tr)
+        mod_tool_UI2("tab_tool", i18n = i18n, .tr = .tr)
       ),
 
       nav_panel(
@@ -215,7 +215,7 @@ shiny_run_arenalytics_dev <- function(...) {
     ## + Module server functions ####
     mod_home_server("tab_home", rv = rv)
 
-    mod_tool_server("tab_tool", rv = rv)
+    mod_tool_server2("tab_tool", rv = rv)
 
     mod_about_server("tab_about", rv = rv)
 

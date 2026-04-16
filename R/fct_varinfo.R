@@ -6,7 +6,7 @@
 #'
 #' @param .zip Named list produced by \code{fct_readzip2()}.
 #' @param .entity Character scalar. Entity name (e.g. \code{"tree"}).
-#' @param .entity_pref A character describing how OpenForis Arena prefix entity
+#' @param .entity_prefix A character describing how OpenForis Arena prefix entity
 #'   tables. Default "MAU_".
 #'
 #' @return A tibble with one row per dimension column, containing:
@@ -17,12 +17,12 @@
 #' @importFrom rlang .data
 #'
 #' @noRd
-fct_varinfo <- function(.zip, .entity, .entity_pref = "MAU_"){
+fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
 
   ## !!! FOR TESTING ONLY
   # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip") ; names(.zip)
   # .entity <- .zip$chain_summary$analysis$entity
-  # .entity_pref = "OLAP_"
+  # .entity_prefix = "OLAP_"
   ## !!!
 
   ## 0. Coerce inputs ------
@@ -43,7 +43,7 @@ fct_varinfo <- function(.zip, .entity, .entity_pref = "MAU_"){
     dplyr::filter(.data$areaBased, .data$active) |>
     dplyr::select("entityPath", "entity") |>
     dplyr::distinct() |>
-    dplyr::mutate(wide_table = paste0(.entity_pref, .data$entity)) |>
+    dplyr::mutate(wide_table = paste0(.entity_prefix, .data$entity)) |>
     dplyr::left_join(label_cols, by = "entity") |>
     dplyr::filter(.data$entity == .entity) |>
     dplyr::pull("wide_table")

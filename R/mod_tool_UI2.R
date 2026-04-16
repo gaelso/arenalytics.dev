@@ -1,7 +1,7 @@
 #' Tool module UI function
 #'
 #' @noRd
-mod_tool_UI <- function(id, i18n, .tr){
+mod_tool_UI2 <- function(id, i18n, .tr){
 
   ## From https://shiny.rstudio.com/articles/modules.html
   # `NS(id)` returns a namespace function, which was save as `ns` and will
@@ -144,28 +144,6 @@ mod_tool_UI <- function(id, i18n, .tr){
     ## $$$
   )
 
-  ## . + Acc4: test crosstalk --------
-  ac4 <-  accordion_panel(
-    title = "Test Crosstalk",
-    icon = bsicons::bs_icon("3-circle"),
-    value = ns("ac4"),
-
-    ## Content
-    selectInput(ns("species"), "Species", levels(datasets::iris$Species), multiple = TRUE),
-    sliderInput(
-      ns("petal_length"), "Petal Length",
-      min = min(datasets::iris$Petal.Length), max = max(datasets::iris$Petal.Length),
-      value = c(min(datasets::iris$Petal.Length), max(datasets::iris$Petal.Length))
-    ),
-    div(
-      actionButton(
-        inputId = ns("btn_to_ctalk"),
-        label = "To Test Panel"
-      ),
-      style = "margin-top: 1rem;"
-    )
-  )
-
   ## + Panels UI ======
 
   ## . + Insights elements ------
@@ -200,7 +178,6 @@ mod_tool_UI <- function(id, i18n, .tr){
   ))
 
   ## . . + Data insights -----
-
   insight_p_title <- tags$h5(
     tags$span("Survey name: ", style = "font-weight:700;"),
     textOutput(ns("insight_title"), inline = TRUE)
@@ -219,42 +196,51 @@ mod_tool_UI <- function(id, i18n, .tr){
   insight_row_bu <- card(
     min_height = "200px",
     card_header(bsicons::bs_icon("diagram-3"), " Base-unit dimensions"),
-    selectizeInput(
-      inputId  = ns("insight_bu_sel"),
-      label    = NULL,
-      choices  = NULL,
-      multiple = TRUE,
-      options  = list(placeholder = "Select dimensions...")
-    ),
-    uiOutput(ns("insight_bu_out"))
+    layout_columns(
+      col_widths = c(6, 6),
+      shinyWidgets::checkboxGroupButtons(
+        inputId   = ns("insight_bu_sel"),
+        label     = NULL,
+        choices   = character(0),
+        individual = TRUE,
+        size      = "sm"
+      ),
+      uiOutput(ns("insight_bu_out"))
+    )
   )
 
   ## Row 2: Sub-unit dimensions
   insight_row_sub <- card(
     min_height = "200px",
     card_header(bsicons::bs_icon("diagram-2"), " Sub-unit dimensions"),
-    selectizeInput(
-      inputId  = ns("insight_sub_sel"),
-      label    = NULL,
-      choices  = NULL,
-      multiple = TRUE,
-      options  = list(placeholder = "Select dimensions...")
-    ),
-    uiOutput(ns("insight_sub_out"))
+    layout_columns(
+      col_widths = c(6, 6),
+      shinyWidgets::checkboxGroupButtons(
+        inputId   = ns("insight_sub_sel"),
+        label     = NULL,
+        choices   = character(0),
+        individual = TRUE,
+        size      = "sm"
+      ),
+      uiOutput(ns("insight_sub_out"))
+    )
   )
 
   ## Row 3: Measures
   insight_row_meas <- card(
     min_height = "200px",
     card_header(bsicons::bs_icon("bar-chart"), " Measures"),
-    selectizeInput(
-      inputId  = ns("insight_meas_sel"),
-      label    = NULL,
-      choices  = NULL,
-      multiple = TRUE,
-      options  = list(placeholder = "Select measures...")
-    ),
-    uiOutput(ns("insight_meas_out"))
+    layout_columns(
+      col_widths = c(6, 6),
+      shinyWidgets::checkboxGroupButtons(
+        inputId   = ns("insight_meas_sel"),
+        label     = NULL,
+        choices   = character(0),
+        individual = TRUE,
+        size      = "sm"
+      ),
+      uiOutput(ns("insight_meas_out"))
+    )
   )
 
   ## $$$
@@ -262,49 +248,6 @@ mod_tool_UI <- function(id, i18n, .tr){
 
   ## . + Panel: analysis ------
   ## Statistical analysis
-
-  ## . + Panel crosstalk ------
-
-  ## Value boxes
-  vb1 <- value_box(
-    title = "Sepal Mean length",
-    value = htmlOutput(ns("vb_seplen_mean")),
-    showcase = bsicons::bs_icon("calendar3", size = "40px"),
-    theme = "primary"
-  )
-
-  vb2 <- value_box(
-    title = "Sepal Mean Width",
-    value = htmlOutput(ns("vb_sepwid_mean")),
-    showcase = bsicons::bs_icon("pin-map", size = "40px"),
-    theme = "secondary"
-  )
-
-  vb3 <- value_box(
-    title = "Number of Species",
-    value = htmlOutput(ns("vb_nb_species")),
-    showcase = bsicons::bs_icon("arrow-repeat", size = "48px"),
-    theme = "warning"
-  )
-
-  ## Cards
-  card1 <- card(
-    full_screen = TRUE,
-    h5(i18n$t("Scatter 1")),
-    d3scatter::d3scatterOutput(ns("scatter1"))
-  )
-
-  card2 <- card(
-    full_screen = TRUE,
-    h5(i18n$t("Scatter 2")),
-    d3scatter::d3scatterOutput(ns("scatter2"))
-  )
-
-  card3 <- card(
-    h5(i18n$t("Summary of selected data")),
-    verbatimTextOutput(ns("summary"))
-  )
-
 
 
   ##
@@ -328,7 +271,7 @@ mod_tool_UI <- function(id, i18n, .tr){
           multiple = TRUE,
           ## $$$
           ## ac2 removed
-          ac1, ac3, ac4
+          ac1, ac3
           ## $$$
         )
       ),
@@ -425,29 +368,6 @@ mod_tool_UI <- function(id, i18n, .tr){
         ))
 
         ## $$$
-      ),
-
-      ## + crosstalk panel =========
-
-      nav_panel(
-        title = "crosstalk",
-        value = "tab_ctalk",
-        icon = icon("magnifying-glass"),
-        ## Value boxes
-        div(
-          id = ns("vb_section"),
-          layout_column_wrap(
-            #width = "200px",
-            fill = FALSE,
-            vb1, vb2, vb3
-          )
-        ),
-        ## Cards
-        div(
-          id = ns("card_section"),
-          layout_column_wrap(card1, card2, width = "300px"),
-          card3
-        )
       )
 
     ) ## END navset_card_tab()
