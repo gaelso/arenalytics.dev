@@ -157,7 +157,8 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL, .entity_prefi
 
   } else {
 
-    ## Genereate vartype tables
+    ## Generate metadata of entities column names
+    ## CF: fct_varinfo() in R/fct_varinfo.R
     entity_names <- file_names |>
       stringr::str_subset(.entity_prefix) |>
       stringr::str_remove(.entity_prefix)

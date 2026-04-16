@@ -22,7 +22,7 @@ fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
   ## !!! FOR TESTING ONLY
   # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip") ; names(.zip)
   # .entity <- .zip$chain_summary$analysis$entity
-  # .entity_prefix = "OLAP_"
+  # .entity_prefix = "MAU_"
   ## !!!
 
   ## 0. Coerce inputs ------
@@ -73,6 +73,8 @@ fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
     ) |>
     dplyr::mutate(report_type = "dimension", source = "input")
 
+  ## exp_factor_ info for reporting area
+
   ## Merge: schema covers input dims, rv_meta covers code dims + measures.
   ## Fields don't overlap; suffix + coalesce handles the seam cleanly.
   wt_names <- tibble::tibble(name = names(wt)) |>
@@ -95,6 +97,7 @@ fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
     dplyr::mutate(
       dimension_baseunit = dplyr::if_else(.data$name == "weight", NA, .data$dimension_baseunit)
     )
+  ## !!! ADD Information for exp_factor_ to get area as measure in the shinyapp
 
   ## Stratum attribute tagging
   strat_attr_raw <- if (is.null(chain$stratumAttribute)) "" else chain$stratumAttribute
