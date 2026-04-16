@@ -129,6 +129,9 @@ mod_tool_UI2 <- function(id, i18n, .tr){
     ## Stratum auto-include note (only when sampling design requires it)
     uiOutput(ns("analysis_strat_text")),
 
+    ## Warning when more than 4 dimensions are selected
+    uiOutput(ns("analysis_too_many_dims")),
+
     ## Run button
     div(
       style = "margin-top: 1rem;",

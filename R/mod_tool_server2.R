@@ -164,44 +164,54 @@ mod_tool_server2 <- function(id, rv) {
       shinyjs::disable("btn_run_analysis")
     })
 
-    ## . + Grouped dimension selectizeInput ------
+    ## . + Dimension checkboxes (base-unit then sub-unit) ------
     output$analysis_dims <- renderUI({
       req(rv$analysis$dim_meta)
 
       make_grp <- function(is_bu) {
         sub <- rv$analysis$dim_meta |>
-          dplyr::filter(report_type == "dimension") |>
-          # dplyr::filter(.data$dimension_baseunit == is_bu, !.data$stratum)
-          dplyr::filter(.data$dimension_baseunit == is_bu)
-        if (nrow(sub) == 0) return(NULL)
+          dplyr::filter(.data$report_type == "dimension",
+                        .data$dimension_baseunit == is_bu)
+        if (nrow(sub) == 0) return(character(0))
         stats::setNames(sub$name, sub$label)
       }
-      choices <- Filter(Negate(is.null), list(
-        "Base-unit dimensions" = make_grp(TRUE),
-        "Sub-unit dimensions"  = make_grp(FALSE)
-      ))
 
-      ## $$$
-      ## selectizeInput(
-      ##   inputId  = ns("analysis_sel_dims"),
-      ##   label    = "Reporting dimensions",
-      ##   choices  = choices,
-      ##   multiple = TRUE,
-      ##   options  = list(placeholder = "Select dimensions...")
-      ## )
-      shinyWidgets::virtualSelectInput(
-        inputId          = ns("analysis_sel_dims"),
-        label            = "Reporting dimensions",
-        choices          = choices,
-        selected         = NULL,
-        multiple         = TRUE,
-        showValueAsTags = TRUE,
-        search           = TRUE,
-        placeholder      = "Select dimensions...",
-        dropboxWrapper   = "body",
-        width            = "100%"
+      bu_choices  <- make_grp(TRUE)
+      sub_choices <- make_grp(FALSE)
+
+      tagList(
+        tags$label(class = "form-label", "Base-unit dimensions"),
+        shinyWidgets::checkboxGroupButtons(
+          inputId    = ns("analysis_bu_dims"),
+          label      = NULL,
+          choices    = if (length(bu_choices) > 0) bu_choices else character(0),
+          individual = TRUE,
+          size       = "sm"
+        ),
+        if (length(sub_choices) > 0) tagList(
+          hr(style = "margin: 0.5rem 0;"),
+          tags$label(class = "form-label", "Sub-unit dimensions"),
+          shinyWidgets::checkboxGroupButtons(
+            inputId    = ns("analysis_sub_dims"),
+            label      = NULL,
+            choices    = sub_choices,
+            individual = TRUE,
+            size       = "sm"
+          )
+        )
       )
-      ## $$$
+    })
+
+    ## . + Too-many-dims warning ------
+    output$analysis_too_many_dims <- renderUI({
+      n <- length(c(input$analysis_bu_dims, input$analysis_sub_dims))
+      if (n <= 4) return(NULL)
+      div(
+        class = "text-warning",
+        style = "font-size: 0.85em; font-style: italic; margin-top: 0.25rem;",
+        bsicons::bs_icon("exclamation-triangle"),
+        " More than 4 dimensions selected, computation may be slow."
+      )
     })
 
     ## . + Stratum note ------
@@ -220,13 +230,14 @@ mod_tool_server2 <- function(id, rv) {
     observe({
       shinyjs::toggleState(
         id        = "btn_run_analysis",
-        condition = isTruthy(input$analysis_sel_dims)
+        condition = isTruthy(input$analysis_bu_dims) || isTruthy(input$analysis_sub_dims)
       )
     })
 
     ## . + Run fct_arenalyse() ------
     observeEvent(input$btn_run_analysis, {
-      req(rv$inputs$data, input$analysis_sel_entity, input$analysis_sel_dims)
+      dims_sel <- c(input$analysis_bu_dims, input$analysis_sub_dims)
+      req(rv$inputs$data, input$analysis_sel_entity, dims_sel)
 
       session$sendCustomMessage("activate-tab", list(id = ns("tool_tabs"), value = "tab_analysis"))
       session$sendCustomMessage("scroll_top", list())
@@ -252,7 +263,7 @@ mod_tool_server2 <- function(id, rv) {
 
       result <- tryCatch(
         withProgress(message = "Running analysis...", value = 0.5, {
-          fct_arenalyse(.zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = input$analysis_sel_dims)
+          fct_arenalyse(.zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = dims_sel)
         }),
         error = function(e) {
           shinyWidgets::sendSweetAlert(
@@ -274,7 +285,7 @@ mod_tool_server2 <- function(id, rv) {
         result$TOTALS <- replace_dim_labels(result$TOTALS, dim_meta, cats, lang)
 
         rv$analysis$result <- result
-        rv$analysis$dims   <- input$analysis_sel_dims
+        rv$analysis$dims   <- dims_sel
         rv$analysis$entity <- input$analysis_sel_entity
       }
     })
