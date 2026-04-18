@@ -14,6 +14,7 @@ Imports:
     crosstalk,
     d3scatter (>= 0.1.0),
     datasets,
+    DT,
     dplyr,
     ggplot2,
     htmltools,

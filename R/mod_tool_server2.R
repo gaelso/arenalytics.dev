@@ -265,6 +265,7 @@ mod_tool_server2 <- function(id, rv) {
       shinyjs::hide("analysis_results")
       shinyjs::show("analysis_progress")
       shinyjs::html("analysis_console", "")
+      shinyjs::disable("btn_analysis_results")
       shinyWidgets::updateProgressBar(
         session = session,
         id = "analysis_progress_bar",
@@ -288,6 +289,7 @@ mod_tool_server2 <- function(id, rv) {
           }
         ),
         error = function(e) {
+          shinyjs::disable("btn_analysis_results")
           shinyjs::hide("analysis_progress")
           shinyjs::toggle("analysis_results", condition = !is.null(rv$analysis$result))
           shinyjs::toggle("analysis_no_result", condition = is.null(rv$analysis$result))
@@ -313,8 +315,17 @@ mod_tool_server2 <- function(id, rv) {
         rv$analysis$dims   <- dims_sel
         rv$analysis$entity <- input$analysis_sel_entity
 
-        shinyjs::hide("analysis_progress")
+        shinyjs::enable("btn_analysis_results")
       }
+    })
+    ## ++ ##
+
+    ## ++ ##
+    observeEvent(input$btn_analysis_results, {
+      req(rv$analysis$result)
+      shinyjs::hide("analysis_progress")
+      shinyjs::hide("analysis_no_result")
+      shinyjs::show("analysis_results")
     })
     ## ++ ##
 
@@ -611,6 +622,51 @@ mod_tool_server2 <- function(id, rv) {
       p
     }
 
+    ## ++ ##
+    filtered_analysis_df <- function(source = c("MEANS", "TOTALS")) {
+      source <- match.arg(source)
+
+      req(rv$analysis$result)
+
+      df <- rv$analysis$result[[source]]
+      filters <- tryCatch(get_filter_vals(), error = function(e) NULL)
+
+      if (is.null(filters)) {
+        return(df)
+      }
+
+      for (nm in names(filters)) {
+        vals <- filters[[nm]]
+        if (length(vals) > 0) {
+          df <- dplyr::filter(df, .data[[nm]] %in% vals)
+        }
+      }
+
+      df
+    }
+
+    table_display_df <- function(source = c("MEANS", "TOTALS")) {
+      source <- match.arg(source)
+
+      df <- filtered_analysis_df(source)
+      measure_names <- rv$analysis$measures_meta |> dplyr::pull("name")
+      selected_measures <- input$analysis_table_measures %||% measure_names
+
+      measure_cols <- names(df)[
+        purrr::map_lgl(
+          names(df),
+          \(col) any(stringr::str_detect(col, paste0("^", selected_measures, "($|_)")))
+        )
+      ]
+
+      keep_cols <- unique(c(setdiff(names(df), unlist(
+        purrr::map(measure_names, \(m) names(df)[stringr::str_detect(names(df), paste0("^", m, "($|_)"))])
+      )), measure_cols))
+
+      dplyr::select(df, dplyr::all_of(keep_cols))
+    }
+    ## ++ ##
+
     ## . + Update plot selectors when a new result arrives ------
     observeEvent(rv$analysis$result, {
       req(rv$analysis$result, rv$analysis$dim_meta, rv$analysis$measures_meta)
@@ -631,10 +687,45 @@ mod_tool_server2 <- function(id, rv) {
       updateSelectInput(session, "plot_measure", choices = meas_choices,    selected = meas_choices[1])
       updateSelectInput(session, "plot_fill",    choices = optional_choices, selected = "")
       updateSelectInput(session, "plot_facet",   choices = optional_choices, selected = "")
-
-      shinyjs::hide("analysis_no_result")
-      shinyjs::show("analysis_results")
+      shinyWidgets::updatePickerInput(
+        session = session,
+        inputId = "analysis_table_measures",
+        choices = meas_choices,
+        selected = meas_meta$name
+      )
     })
+
+    ## ++ ##
+    output$analysis_table <- DT::renderDT({
+      req(rv$analysis$result, input$analysis_table_source)
+
+      DT::datatable(
+        table_display_df(input$analysis_table_source),
+        rownames = FALSE,
+        filter = "top",
+        extensions = "Buttons",
+        options = list(
+          scrollX = TRUE,
+          pageLength = 10,
+          dom = "Bfrtip",
+          buttons = c("copy")
+        )
+      )
+    })
+
+    output$analysis_table_download <- downloadHandler(
+      filename = function() {
+        paste0("analysis_", tolower(input$analysis_table_source %||% "means"), ".csv")
+      },
+      content = function(file) {
+        utils::write.csv(
+          filtered_analysis_df(input$analysis_table_source %||% "MEANS"),
+          file,
+          row.names = FALSE
+        )
+      }
+    )
+    ## ++ ##
 
     ## $$$
     ## . + Dimension filters -------------------------------------------------
@@ -699,7 +790,7 @@ mod_tool_server2 <- function(id, rv) {
     output$analysis_plot_means <- renderPlot({
       req(rv$analysis$result, input$plot_dim, input$plot_measure)
       make_bar_plot(
-        df                = rv$analysis$result$MEANS,
+        df                = filtered_analysis_df("MEANS"),
         x_dim             = input$plot_dim,
         measure           = input$plot_measure,
         fill_col          = input$plot_fill,
@@ -717,7 +808,7 @@ mod_tool_server2 <- function(id, rv) {
     output$analysis_plot_totals <- renderPlot({
       req(rv$analysis$result, input$plot_dim, input$plot_measure)
       make_bar_plot(
-        df                = rv$analysis$result$TOTALS,
+        df                = filtered_analysis_df("TOTALS"),
         x_dim             = input$plot_dim,
         measure           = input$plot_measure,
         fill_col          = input$plot_fill,

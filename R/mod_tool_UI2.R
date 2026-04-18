@@ -331,6 +331,13 @@ mod_tool_UI2 <- function(id, i18n, .tr){
             id = ns("analysis_console"),
             style =
               "height: 300px; overflow-y: auto; background-color:#f7f7f7; font-family:monospace; font-size: small;"
+          ),
+          br(),
+          shinyjs::disabled(
+            actionButton(
+              inputId = ns("btn_analysis_results"),
+              label = "Show analysis results"
+            )
           )
         )),
 
@@ -338,7 +345,39 @@ mod_tool_UI2 <- function(id, i18n, .tr){
         shinyjs::hidden(div(
           id = ns("analysis_results"),
 
-          ## -- Row 1: main plot controls ----------------------------------
+          ## ++ ##
+          ## -- Row 1: analysis table --------------------------------------
+          card(
+            card_header("Analysis data used for figures"),
+            layout_column_wrap(
+              width = "220px",
+              fill  = FALSE,
+              selectInput(
+                ns("analysis_table_source"),
+                "Table source",
+                choices = c("Means (per ha)" = "MEANS", "Totals" = "TOTALS"),
+                selected = "MEANS"
+              ),
+              shinyWidgets::pickerInput(
+                ns("analysis_table_measures"),
+                "Measures shown in table",
+                choices = NULL,
+                selected = NULL,
+                multiple = TRUE,
+                options = list(
+                  `actions-box` = TRUE,
+                  `selected-text-format` = "count > 3"
+                )
+              ),
+              downloadButton(
+                ns("analysis_table_download"),
+                "Download full table (CSV)"
+              )
+            ),
+            DT::DTOutput(ns("analysis_table"))
+          ),
+
+          ## -- Row 2: main plot controls ----------------------------------
           card(
             layout_column_wrap(
               width = "180px",
@@ -361,7 +400,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
               )
               ## $$$
             ),
-            ## -- Row 2: extra dimension filters (shown only when >3 dims used) --
+            ## -- Row 3: extra dimension filters (shown only when >3 dims used) --
             uiOutput(ns("analysis_extra_filters"))
           ),
 

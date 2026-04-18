@@ -39,8 +39,8 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pb_session = NULL, .pb_id = NULL
 
   ## !!! FOR TESTING ONLY
   # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip") ; names(.zip)
-  # .entity <- .zip$chain_summary$analysis$entity
-  # .dim <- .zip$chain_summary$analysis$dimensions
+  # .entity <- .zip$data$chain_summary$analysis$entity
+  # .dim <- .zip$data$chain_summary$analysis$dimensions
   # .dim
   # .dim <- c("tree_plant_type", "province", "stratum_calc", "dbh_up100_10cm", "cluster_land_use", "cluster_forest_type", "cluster_forest_status")
   # summary(.zip[[paste0("OLAP_", .entity)]])
