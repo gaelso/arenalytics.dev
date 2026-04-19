@@ -121,6 +121,14 @@ mod_tool_UI2 <- function(id, i18n, .tr){
     ## h4("coming soon"),
 
     ## Entity selector (populated after data loads)
+    radioButtons(
+      inputId = ns("analysis_mode"),
+      label   = "Analysis type",
+      choices = c("Area" = "area", "Other measures" = "other"),
+      selected = "other",
+      inline = TRUE
+    ),
+
     uiOutput(ns("analysis_entity")),
 
     ## Grouped dimension selector (populated after entity is chosen)
@@ -188,45 +196,18 @@ mod_tool_UI2 <- function(id, i18n, .tr){
 
   ## $$$
 
-  ## Entity selector — choices populated server-side on data load
-  insight_entity_sel <- selectInput(
-    inputId  = ns("insight_sel_entity"),
-    label    = "Entity",
-    choices  = NULL
-  )
-
   ## Row 1: Base-unit dimensions
   insight_row_bu <- card(
     min_height = "200px",
     card_header(bsicons::bs_icon("diagram-3"), " Base-unit dimensions"),
-    layout_columns(
-      col_widths = c(6, 6),
-      shinyWidgets::checkboxGroupButtons(
-        inputId   = ns("insight_bu_sel"),
-        label     = NULL,
-        choices   = character(0),
-        individual = TRUE,
-        size      = "sm"
-      ),
-      uiOutput(ns("insight_bu_out"))
-    )
+    uiOutput(ns("insight_bu_out"))
   )
 
   ## Row 2: Sub-unit dimensions
   insight_row_sub <- card(
     min_height = "200px",
     card_header(bsicons::bs_icon("diagram-2"), " Sub-unit dimensions"),
-    layout_columns(
-      col_widths = c(6, 6),
-      shinyWidgets::checkboxGroupButtons(
-        inputId   = ns("insight_sub_sel"),
-        label     = NULL,
-        choices   = character(0),
-        individual = TRUE,
-        size      = "sm"
-      ),
-      uiOutput(ns("insight_sub_out"))
-    )
+    uiOutput(ns("insight_sub_out"))
   )
 
   ## ++ ##
@@ -288,7 +269,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
           ## $$$
           insight_p_title,
           br(),
-          insight_entity_sel,
+          uiOutput(ns("insight_current_selection")),
           hr(),
           insight_row_bu,
           insight_row_sub,
@@ -403,6 +384,8 @@ mod_tool_UI2 <- function(id, i18n, .tr){
             ## -- Row 3: extra dimension filters (shown only when >3 dims used) --
             uiOutput(ns("analysis_extra_filters"))
           ),
+
+          uiOutput(ns("analysis_plot_guidance")),
 
           ## -- MEANS plot --------------------------------------------------
           card(

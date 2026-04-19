@@ -20,7 +20,7 @@ mod_tool_server2 <- function(id, rv) {
     # rv$inputs$check_zip <- fct_checkzip(.path = rv$inputs$path_zip, .entity_prefix = .ep)
     # rv$inputs      <- fct_readzip2(.path = rv$inputs$path_zip, .entity_prefix = .ep)
     # input <- list()
-    # input$analysis_sel_entity <-  input$insight_sel_entity  <- "tree"
+    # input$analysis_sel_entity <- "tree"
     # input$analysis_sel_dims <- c("cluster_forest_type", "dbh_up100_10cm")
     # result <- fct_arenalyse(.zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = input$analysis_sel_dims)
     # rv$insights <- list()
@@ -127,15 +127,6 @@ mod_tool_server2 <- function(id, rv) {
       }
     })
 
-    ## $$$
-    ## Acc2 entity/var selectors — removed (selection moved into Insights panel cards)
-    ##
-    ## observeEvent(input$insight_sel_entity, { ... })
-    ## output$insight_entity <- renderUI({ ... })
-    ## output$insight_vars   <- renderUI({ ... })
-    ## $$$
-
-
     ## + Acc3: Run analysis ======
 
     ## $$$
@@ -164,9 +155,13 @@ mod_tool_server2 <- function(id, rv) {
       shinyjs::disable("btn_run_analysis")
     })
 
+    observeEvent(input$analysis_mode, {
+      shinyjs::disable("btn_run_analysis")
+    })
+
     ## . + Dimension checkboxes (base-unit then sub-unit) ------
     output$analysis_dims <- renderUI({
-      req(rv$analysis$dim_meta)
+      req(rv$analysis$dim_meta, input$analysis_mode)
 
       make_grp <- function(is_bu) {
         sub <- rv$analysis$dim_meta |>
@@ -188,7 +183,7 @@ mod_tool_server2 <- function(id, rv) {
           individual = TRUE,
           size       = "sm"
         ),
-        if (length(sub_choices) > 0) tagList(
+        if (input$analysis_mode != "area" && length(sub_choices) > 0) tagList(
           hr(style = "margin: 0.5rem 0;"),
           tags$label(class = "form-label", "Sub-unit dimensions"),
           shinyWidgets::checkboxGroupButtons(
@@ -204,7 +199,11 @@ mod_tool_server2 <- function(id, rv) {
 
     ## . + Too-many-dims warning ------
     output$analysis_too_many_dims <- renderUI({
-      n <- length(c(input$analysis_bu_dims, input$analysis_sub_dims))
+      n <- if (identical(input$analysis_mode, "area")) {
+        length(input$analysis_bu_dims)
+      } else {
+        length(c(input$analysis_bu_dims, input$analysis_sub_dims))
+      }
       if (n <= 4) return(NULL)
       div(
         class = "text-warning",
@@ -216,6 +215,7 @@ mod_tool_server2 <- function(id, rv) {
 
     ## . + Stratum note ------
     output$analysis_strat_text <- renderUI({
+      req(!identical(input$analysis_mode, "area"))
       req(rv$analysis$strat_label)
       div(
         class = "text-info",
@@ -228,16 +228,26 @@ mod_tool_server2 <- function(id, rv) {
 
     ## . + Enable run button when at least one dim is selected ------
     observe({
+      dims_sel <- if (identical(input$analysis_mode, "area")) {
+        input$analysis_bu_dims
+      } else {
+        c(input$analysis_bu_dims, input$analysis_sub_dims)
+      }
+
       shinyjs::toggleState(
         id        = "btn_run_analysis",
-        condition = isTruthy(input$analysis_bu_dims) || isTruthy(input$analysis_sub_dims)
+        condition = isTruthy(dims_sel)
       )
     })
 
     ## ++ ##
     ## . + Run fct_arenalyse() ------
     observeEvent(input$btn_run_analysis, {
-      dims_sel <- c(input$analysis_bu_dims, input$analysis_sub_dims)
+      dims_sel <- if (identical(input$analysis_mode, "area")) {
+        input$analysis_bu_dims
+      } else {
+        c(input$analysis_bu_dims, input$analysis_sub_dims)
+      }
       req(rv$inputs$data, input$analysis_sel_entity, dims_sel)
 
       session$sendCustomMessage("activate-tab", list(id = ns("tool_tabs"), value = "tab_analysis"))
@@ -257,8 +267,15 @@ mod_tool_server2 <- function(id, rv) {
       #   )
 
       ## Measures info for plot selector
-      rv$analysis$measures_meta <- rv$inputs$var_meta[[input$analysis_sel_entity]] |>
-        dplyr::filter(report_type == "measure")
+      if (identical(input$analysis_mode, "area")) {
+        rv$analysis$measures_meta <- tibble::tibble(
+          name = "area",
+          label = "Area"
+        )
+      } else {
+        rv$analysis$measures_meta <- rv$inputs$var_meta[[input$analysis_sel_entity]] |>
+          dplyr::filter(report_type == "measure")
+      }
 
       shinyjs::disable("btn_run_analysis")
       shinyjs::hide("analysis_no_result")
@@ -275,13 +292,44 @@ mod_tool_server2 <- function(id, rv) {
       result <- tryCatch(
         withCallingHandlers(
           {
-            fct_arenalyse(
-              .zip = rv$inputs$data,
-              .entity = input$analysis_sel_entity,
-              .dim = dims_sel,
-              .pb_session = session,
-              .pb_id = "analysis_progress_bar"
-            )
+            if (identical(input$analysis_mode, "area")) {
+              message(sprintf(
+                "[%s] Preparing area summary.",
+                format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+              ))
+              shinyWidgets::updateProgressBar(
+                session = session,
+                id = "analysis_progress_bar",
+                value = 30
+              )
+
+              area_result <- build_area_result(
+                .zip = rv$inputs$data,
+                .entity = input$analysis_sel_entity,
+                .dim = dims_sel,
+                .entity_prefix = .ep
+              )
+
+              message(sprintf(
+                "[%s] Area summary completed.",
+                format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+              ))
+              shinyWidgets::updateProgressBar(
+                session = session,
+                id = "analysis_progress_bar",
+                value = 100
+              )
+
+              area_result
+            } else {
+              fct_arenalyse(
+                .zip = rv$inputs$data,
+                .entity = input$analysis_sel_entity,
+                .dim = dims_sel,
+                .pb_session = session,
+                .pb_id = "analysis_progress_bar"
+              )
+            }
           },
           message = function(m) {
             shinyjs::html(id = "analysis_console", html = paste0(m$message, '<br>'), add = TRUE)
@@ -310,6 +358,11 @@ mod_tool_server2 <- function(id, rv) {
 
         result$MEANS  <- replace_dim_labels(result$MEANS,  dim_meta, cats, lang)
         result$TOTALS <- replace_dim_labels(result$TOTALS, dim_meta, cats, lang)
+
+        if (!identical(input$analysis_mode, "area")) {
+          result$MEANS  <- result$MEANS  |> dplyr::select(-dplyr::any_of(c("area", "JOIN_COL")))
+          result$TOTALS <- result$TOTALS |> dplyr::select(-dplyr::any_of(c("area", "JOIN_COL")))
+        }
 
         rv$analysis$result <- result
         rv$analysis$dims   <- dims_sel
@@ -351,55 +404,6 @@ mod_tool_server2 <- function(id, rv) {
     ## $$$
     ## output$insight_chain / insight_summary / insight_entity_rows — all replaced below.
 
-    ## . + Populate entity dropdown when data loads ------
-    observe({
-      req(rv$insights$entities_named)
-      updateSelectInput(session, "insight_sel_entity", choices = rv$insights$entities_named)
-    })
-
-    ## ++ ##
-    ## . + Populate the insight controls when entity changes ------
-    observeEvent(input$insight_sel_entity, {
-      req(rv$inputs$data)
-
-      ## Get dims and measures from meta
-      # entity   <- stringr::str_remove(input$insight_sel_entity, "OLAP_")
-      # dim_meta <- fct_varinfo(.zip = rv$inputs$data, .entity = entity)
-      #
-      # measures_meta <- tibble::as_tibble(rv$inputs$data$chain_summary$resultVariables) |>
-      #   dplyr::filter(
-      #     .data$entity == entity,
-      #     .data$areaBased,
-      #     .data$active,
-      #     .data$type == "Q"
-      #   )
-      # bu_choices   <- with(dplyr::filter(dim_meta, .data$dimension_baseunit == TRUE,  !.data$stratum),
-      #                      stats::setNames(name, label))
-      # sub_choices  <- with(dplyr::filter(dim_meta, .data$dimension_baseunit == FALSE, !.data$stratum),
-      #                      stats::setNames(name, label))
-      # meas_choices <- with(measures_meta, stats::setNames(name, label))
-
-      dim_meta_bu <- rv$inputs$var_meta[[input$insight_sel_entity]] |>
-        dplyr::filter(report_type == "dimension", dimension_baseunit)
-      dim_meta_sub <- rv$inputs$var_meta[[input$insight_sel_entity]] |>
-        dplyr::filter(report_type == "dimension", !dimension_baseunit)
-      meas_meta <- rv$inputs$var_meta[[input$insight_sel_entity]] |>
-        dplyr::filter(report_type == "measure")
-
-      entity_name <- stringr::str_subset(names(rv$inputs$data), input$insight_sel_entity)
-
-      ## Store choices and entity table for use in summary outputs
-      rv$insights$bu_choices    <- stats::setNames(dim_meta_bu$name, dim_meta_bu$label)
-      rv$insights$sub_choices   <- stats::setNames(dim_meta_sub$name, dim_meta_sub$label)
-      rv$insights$meas_choices  <- stats::setNames(meas_meta$name, meas_meta$label)
-      rv$insights$dim_meta      <- rv$inputs$var_meta[[input$insight_sel_entity]]
-      rv$insights$entity_table  <- rv$inputs$data[[entity_name]] |> tibble::as_tibble()
-
-      shinyWidgets::updateCheckboxGroupButtons(session, "insight_bu_sel",   choices = rv$insights$bu_choices,   selected = character(0))
-      shinyWidgets::updateCheckboxGroupButtons(session, "insight_sub_sel",  choices = rv$insights$sub_choices,  selected = character(0))
-    })
-    ## ++ ##
-
     ## ++ ##
     ## . + Summary outputs — right column of each insight card ------
 
@@ -436,7 +440,8 @@ mod_tool_server2 <- function(id, rv) {
           dplyr::slice(1)
 
         values_raw <- tbl[[v]]
-        has_na <- any(is.na(values_raw) | values_raw == "")
+        has_na <- any(is.na(values_raw))
+        has_empty <- any(!is.na(values_raw) & values_raw == "")
 
         lookup <- get_dim_label_lookup(meta_row, categories, lang)
 
@@ -457,6 +462,11 @@ mod_tool_server2 <- function(id, rv) {
           style = "margin-bottom: 0.85rem;",
           tags$div(
             tags$strong(meta_row$label[[1]]),
+            if (has_empty) tags$span(
+              " Empty class present",
+              class = "badge text-bg-warning",
+              style = "margin-left: 0.5rem;"
+            ),
             if (has_na) tags$span(
               " NA present",
               class = "badge text-bg-danger",
@@ -496,31 +506,81 @@ mod_tool_server2 <- function(id, rv) {
       )
     }
 
+    get_current_insight_context <- function() {
+      req(rv$inputs$data, input$analysis_sel_entity)
+
+      entity_name <- paste0(.ep, input$analysis_sel_entity)
+      dim_meta <- rv$inputs$var_meta[[input$analysis_sel_entity]]
+      entity_table <- rv$inputs$data[[entity_name]] |> tibble::as_tibble()
+
+      list(
+        dim_meta = dim_meta,
+        entity_table = entity_table,
+        base_dims = input$analysis_bu_dims %||% character(0),
+        sub_dims = if (identical(input$analysis_mode, "area")) character(0) else input$analysis_sub_dims %||% character(0),
+        meas_choices = if (identical(input$analysis_mode, "area")) {
+          c(Area = "area")
+        } else {
+          meas_meta <- dim_meta |> dplyr::filter(.data$report_type == "measure")
+          stats::setNames(meas_meta$name, meas_meta$label)
+        }
+      )
+    }
+
+    output$insight_current_selection <- renderUI({
+      req(rv$inputs$data)
+
+      if (!isTruthy(input$analysis_sel_entity)) {
+        return(tags$p(
+          class = "text-muted fst-italic",
+          "Choose an entity and dimensions in 'Run analysis' to inspect the current selection."
+        ))
+      }
+
+      selected_dims <- c(input$analysis_bu_dims %||% character(0), input$analysis_sub_dims %||% character(0))
+      selection_text <- if (length(selected_dims) == 0) "No dimensions selected." else paste(selected_dims, collapse = ", ")
+
+      tags$div(
+        tags$p(
+          tags$strong("Entity: "),
+          input$analysis_sel_entity
+        ),
+        tags$p(
+          tags$strong("Analysis type: "),
+          if (identical(input$analysis_mode, "area")) "Area" else "Other measures"
+        ),
+        tags$p(
+          tags$strong("Selected dimensions: "),
+          selection_text
+        )
+      )
+    })
+
     output$insight_bu_out <- renderUI({
-      req(rv$insights$bu_choices, rv$insights$entity_table, rv$insights$dim_meta, rv$inputs$data$categories)
+      ctx <- get_current_insight_context()
       make_dim_summary(
-        sel = input$insight_bu_sel,
-        meta = rv$insights$dim_meta,
-        tbl = rv$insights$entity_table,
+        sel = ctx$base_dims,
+        meta = ctx$dim_meta,
+        tbl = ctx$entity_table,
         categories = rv$inputs$data$categories,
         lang = rv$inputs$data$chain_summary$selectedLanguage %||% "en"
       )
     })
 
     output$insight_sub_out <- renderUI({
-      req(rv$insights$sub_choices, rv$insights$entity_table, rv$insights$dim_meta, rv$inputs$data$categories)
+      ctx <- get_current_insight_context()
       make_dim_summary(
-        sel = input$insight_sub_sel,
-        meta = rv$insights$dim_meta,
-        tbl = rv$insights$entity_table,
+        sel = ctx$sub_dims,
+        meta = ctx$dim_meta,
+        tbl = ctx$entity_table,
         categories = rv$inputs$data$categories,
         lang = rv$inputs$data$chain_summary$selectedLanguage %||% "en"
       )
     })
 
     output$insight_meas_out <- renderUI({
-      req(rv$insights$meas_choices)
-      make_meas_summary(rv$insights$meas_choices)
+      ctx <- get_current_insight_context()
+      make_meas_summary(ctx$meas_choices)
     })
     ## ++ ##
 
@@ -623,6 +683,25 @@ mod_tool_server2 <- function(id, rv) {
     }
 
     ## ++ ##
+    build_area_result <- function(.zip, .entity, .dim, .entity_prefix = .ep) {
+      chain <- .zip$chain_summary
+      base_uuid <- paste0(chain$baseUnit, "_uuid")
+      entity_tbl <- .zip[[paste0(.entity_prefix, .entity)]] |> tibble::as_tibble()
+
+      if ("OLAP_baseunit_total" %in% names(entity_tbl)) {
+        entity_tbl <- entity_tbl |> dplyr::rename(mau_baseunit_total = "OLAP_baseunit_total")
+      }
+
+      area_df <- entity_tbl |>
+        dplyr::filter(.data$mau_baseunit_total == TRUE, .data$weight > 0, .data$exp_factor_ != 0) |>
+        dplyr::mutate(dplyr::across(dplyr::all_of(.dim), as.character)) |>
+        dplyr::select(dplyr::all_of(c(base_uuid, .dim)), "exp_factor_") |>
+        dplyr::distinct() |>
+        dplyr::summarise(area = sum(.data$exp_factor_), .by = dplyr::all_of(.dim))
+
+      list(MEANS = area_df, TOTALS = area_df)
+    }
+
     filtered_analysis_df <- function(source = c("MEANS", "TOTALS")) {
       source <- match.arg(source)
 
@@ -665,6 +744,38 @@ mod_tool_server2 <- function(id, rv) {
 
       dplyr::select(df, dplyr::all_of(keep_cols))
     }
+
+    get_plot_validation <- function() {
+      req(rv$analysis$dims, input$plot_dim)
+
+      role_dims <- unique(c(
+        input$plot_dim %||% character(0),
+        if (isTruthy(input$plot_fill) && input$plot_fill != "") input$plot_fill else character(0),
+        if (isTruthy(input$plot_facet) && input$plot_facet != "") input$plot_facet else character(0)
+      ))
+
+      filter_vals <- tryCatch(get_filter_vals(), error = function(e) list())
+      uncovered_dims <- setdiff(rv$analysis$dims, role_dims)
+      invalid_dims <- uncovered_dims[
+        purrr::map_lgl(uncovered_dims, \(d) length(filter_vals[[d]] %||% character(0)) != 1)
+      ]
+
+      if (length(invalid_dims) == 0) {
+        return(list(
+          ok = TRUE,
+          message = "All selected dimensions are accounted for in the figure."
+        ))
+      }
+
+      list(
+        ok = FALSE,
+        message = paste0(
+          "To display the figure, assign or reduce these dimensions to one class: ",
+          paste(invalid_dims, collapse = ", "),
+          "."
+        )
+      )
+    }
     ## ++ ##
 
     ## . + Update plot selectors when a new result arrives ------
@@ -683,15 +794,18 @@ mod_tool_server2 <- function(id, rv) {
       ## optional_choices <- c(stats::setNames("", ""), dim_choices)
       ## $$$
 
+      default_fill <- if (length(dim_choices) >= 2) unname(dim_choices[2]) else ""
+      default_facet <- if (length(dim_choices) >= 3) unname(dim_choices[3]) else ""
+
       updateSelectInput(session, "plot_dim",     choices = dim_choices,     selected = dim_choices[1])
       updateSelectInput(session, "plot_measure", choices = meas_choices,    selected = meas_choices[1])
-      updateSelectInput(session, "plot_fill",    choices = optional_choices, selected = "")
-      updateSelectInput(session, "plot_facet",   choices = optional_choices, selected = "")
+      updateSelectInput(session, "plot_fill",    choices = optional_choices, selected = default_fill)
+      updateSelectInput(session, "plot_facet",   choices = optional_choices, selected = default_facet)
       shinyWidgets::updatePickerInput(
         session = session,
         inputId = "analysis_table_measures",
         choices = meas_choices,
-        selected = meas_meta$name
+        selected = meas_meta$name[1]
       )
     })
 
@@ -699,7 +813,7 @@ mod_tool_server2 <- function(id, rv) {
     output$analysis_table <- DT::renderDT({
       req(rv$analysis$result, input$analysis_table_source)
 
-      DT::datatable(
+      table_out <- DT::datatable(
         table_display_df(input$analysis_table_source),
         rownames = FALSE,
         filter = "top",
@@ -711,6 +825,14 @@ mod_tool_server2 <- function(id, rv) {
           buttons = c("copy")
         )
       )
+
+      numeric_cols <- names(table_display_df(input$analysis_table_source))[purrr::map_lgl(table_display_df(input$analysis_table_source), is.numeric)]
+
+      if (length(numeric_cols) > 0) {
+        table_out <- DT::formatRound(table_out, columns = numeric_cols, digits = 2, mark = ",")
+      }
+
+      table_out
     })
 
     output$analysis_table_download <- downloadHandler(
@@ -773,6 +895,18 @@ mod_tool_server2 <- function(id, rv) {
       )
     })
 
+    output$analysis_plot_guidance <- renderUI({
+      req(rv$analysis$result, input$plot_dim)
+      validation <- get_plot_validation()
+
+      div(
+        class = if (validation$ok) "text-success" else "text-warning",
+        style = "font-size: 0.9em; font-style: italic;",
+        if (validation$ok) bsicons::bs_icon("check-circle") else bsicons::bs_icon("exclamation-triangle"),
+        paste0(" ", validation$message)
+      )
+    })
+
     ## . + Helper: collect current filter values for all dims ----------------
     ## (replaces get_extra_filter_vals — covers every dim, not just unallocated)
     get_filter_vals <- function() {
@@ -789,6 +923,8 @@ mod_tool_server2 <- function(id, rv) {
     ## . + MEANS bar plot ----------------------------------------------------
     output$analysis_plot_means <- renderPlot({
       req(rv$analysis$result, input$plot_dim, input$plot_measure)
+      validation <- get_plot_validation()
+      validate(need(validation$ok, validation$message))
       make_bar_plot(
         df                = filtered_analysis_df("MEANS"),
         x_dim             = input$plot_dim,
@@ -807,6 +943,8 @@ mod_tool_server2 <- function(id, rv) {
     ## . + TOTALS bar plot ---------------------------------------------------
     output$analysis_plot_totals <- renderPlot({
       req(rv$analysis$result, input$plot_dim, input$plot_measure)
+      validation <- get_plot_validation()
+      validate(need(validation$ok, validation$message))
       make_bar_plot(
         df                = filtered_analysis_df("TOTALS"),
         x_dim             = input$plot_dim,
