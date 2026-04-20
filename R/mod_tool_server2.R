@@ -85,7 +85,7 @@ mod_tool_server2 <- function(id, rv) {
       rv$inputs <- withCallingHandlers(
         {
           fct_readzip2(
-            .path = rv$inputs$path_zip, .pb_session = session, .pb_id = "readdata_progress", .entity_prefix = .ep
+            .path = rv$inputs$path_zip, .pb_ss = session, .pb_id = "readdata_progress", .entity_prefix = .ep
           )
         },
         message = function(m) {
@@ -326,7 +326,7 @@ mod_tool_server2 <- function(id, rv) {
                 .zip = rv$inputs$data,
                 .entity = input$analysis_sel_entity,
                 .dim = dims_sel,
-                .pb_session = session,
+                .pb_ss = session,
                 .pb_id = "analysis_progress_bar"
               )
             }
@@ -338,9 +338,9 @@ mod_tool_server2 <- function(id, rv) {
         ),
         error = function(e) {
           shinyjs::disable("btn_analysis_results")
-          shinyjs::hide("analysis_progress")
-          shinyjs::toggle("analysis_results", condition = !is.null(rv$analysis$result))
-          shinyjs::toggle("analysis_no_result", condition = is.null(rv$analysis$result))
+          # shinyjs::hide("analysis_progress")
+          # shinyjs::toggle("analysis_results", condition = !is.null(rv$analysis$result))
+          # shinyjs::toggle("analysis_no_result", condition = is.null(rv$analysis$result))
           shinyWidgets::sendSweetAlert(
             session = session, title = "Analysis error",
             text = e$message, type = "error"
