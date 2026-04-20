@@ -22,8 +22,10 @@ mod_tool_server2 <- function(id, rv) {
     # input <- list()
     # input$analysis_sel_entity <- "tree"
     # input$analysis_sel_dims <- c("cluster_forest_type", "dbh_up100_10cm")
-    # result <- fct_arenalyse(.zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = input$analysis_sel_dims)
+    # result <- fct_arenalyse(.zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = input$analysis_sel_dims, .cm = "fast")
     # rv$insights <- list()
+    # dims_sel <- c("cluster_forest_type", "stratum_calc")
+    # result <- fct_arenalyse(.zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = dims_sel, .cm = "fast")
     ## !!!
 
 
@@ -119,7 +121,13 @@ mod_tool_server2 <- function(id, rv) {
       if (length(names(rv$inputs$data)) > 0) {
         ## Convention entities = 'tree' etc., entities_labs = 'Tree', fetch entity data -> 'MAU_tree'
         rv$insights$entities       <- names(rv$inputs$data) |> stringr::str_subset(.ep) |> stringr::str_remove(.ep)
-        rv$insights$entities_labs  <- rv$insights$entities # Labs to be done
+        rv$insights$entities_labs  <- fct_find_label(
+          .df = rv$inputs$data$schema_summary |>
+            tibble::as_tibble() |>
+            dplyr::filter(.data$type == "entity"),
+          .name = rv$insights$entities,
+          .lang = rv$inputs$data$chain_summary$selectedLanguage
+        )
         rv$insights$entities_named <- stats::setNames(rv$insights$entities, rv$insights$entities_labs)
 
       } else {
@@ -326,9 +334,11 @@ mod_tool_server2 <- function(id, rv) {
                 .zip = rv$inputs$data,
                 .entity = input$analysis_sel_entity,
                 .dim = dims_sel,
+                .cm = "fast",
                 .pb_ss = session,
                 .pb_id = "analysis_progress_bar"
               )
+
             }
           },
           message = function(m) {
@@ -728,6 +738,9 @@ mod_tool_server2 <- function(id, rv) {
       source <- match.arg(source)
 
       df <- filtered_analysis_df(source)
+      dim_names <- rv$analysis$dims %||% character(0)
+      ordered_dims <- input$analysis_table_dims %||% dim_names
+      remaining_dims <- setdiff(dim_names, ordered_dims)
       measure_names <- rv$analysis$measures_meta |> dplyr::pull("name")
       selected_measures <- input$analysis_table_measures %||% measure_names
 
@@ -738,9 +751,11 @@ mod_tool_server2 <- function(id, rv) {
         )
       ]
 
-      keep_cols <- unique(c(setdiff(names(df), unlist(
+      other_cols <- setdiff(names(df), c(dim_names, unlist(
         purrr::map(measure_names, \(m) names(df)[stringr::str_detect(names(df), paste0("^", m, "($|_)"))])
-      )), measure_cols))
+      )))
+
+      keep_cols <- unique(c(ordered_dims, remaining_dims, other_cols, measure_cols))
 
       dplyr::select(df, dplyr::all_of(keep_cols))
     }
@@ -788,33 +803,42 @@ mod_tool_server2 <- function(id, rv) {
       meas_meta    <- rv$analysis$measures_meta
       meas_choices <- stats::setNames(meas_meta$name, meas_meta$label)
 
-      ## $$$
-      ## None + all dims for fill/facet selectors — blank label so selectize shows placeholder
+      n_dims <- length(dim_choices)
       optional_choices <- c("-- None --" = "", dim_choices)
-      ## optional_choices <- c(stats::setNames("", ""), dim_choices)
-      ## $$$
-
-      default_fill <- if (length(dim_choices) >= 2) unname(dim_choices[2]) else ""
-      default_facet <- if (length(dim_choices) >= 3) unname(dim_choices[3]) else ""
+      fill_choices <- if (n_dims >= 2) optional_choices else c("-- None --" = "")
+      facet_choices <- if (n_dims >= 3) optional_choices else c("-- None --" = "")
+      default_fill <- if (n_dims >= 2) unname(dim_choices[2]) else ""
+      default_facet <- if (n_dims >= 3) unname(dim_choices[3]) else ""
 
       updateSelectInput(session, "plot_dim",     choices = dim_choices,     selected = dim_choices[1])
       updateSelectInput(session, "plot_measure", choices = meas_choices,    selected = meas_choices[1])
-      updateSelectInput(session, "plot_fill",    choices = optional_choices, selected = default_fill)
-      updateSelectInput(session, "plot_facet",   choices = optional_choices, selected = default_facet)
+      updateSelectInput(session, "plot_fill",    choices = fill_choices, selected = default_fill)
+      updateSelectInput(session, "plot_facet",   choices = facet_choices, selected = default_facet)
       shinyWidgets::updatePickerInput(
         session = session,
         inputId = "analysis_table_measures",
         choices = meas_choices,
         selected = meas_meta$name[1]
       )
+      shinyWidgets::updatePickerInput(
+        session = session,
+        inputId = "analysis_table_dims",
+        choices = dim_choices,
+        selected = rv$analysis$dims
+      )
+
+      shinyjs::toggleState("plot_fill", condition = n_dims >= 2)
+      shinyjs::toggleState("plot_facet", condition = n_dims >= 3)
     })
 
     ## ++ ##
     output$analysis_table <- DT::renderDT({
       req(rv$analysis$result, input$analysis_table_source)
 
+      table_df <- table_display_df(input$analysis_table_source)
+
       table_out <- DT::datatable(
-        table_display_df(input$analysis_table_source),
+        table_df,
         rownames = FALSE,
         filter = "top",
         extensions = "Buttons",
@@ -826,7 +850,7 @@ mod_tool_server2 <- function(id, rv) {
         )
       )
 
-      numeric_cols <- names(table_display_df(input$analysis_table_source))[purrr::map_lgl(table_display_df(input$analysis_table_source), is.numeric)]
+      numeric_cols <- names(table_df)[purrr::map_lgl(table_df, is.numeric)]
 
       if (length(numeric_cols) > 0) {
         table_out <- DT::formatRound(table_out, columns = numeric_cols, digits = 2, mark = ",")

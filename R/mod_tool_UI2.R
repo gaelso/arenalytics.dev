@@ -350,6 +350,17 @@ mod_tool_UI2 <- function(id, i18n, .tr){
                   `selected-text-format` = "count > 3"
                 )
               ),
+              shinyWidgets::pickerInput(
+                ns("analysis_table_dims"),
+                "Dimension column order",
+                choices = NULL,
+                selected = NULL,
+                multiple = TRUE,
+                options = list(
+                  `actions-box` = TRUE,
+                  `selected-text-format` = "count > 3"
+                )
+              ),
               downloadButton(
                 ns("analysis_table_download"),
                 "Download full table (CSV)"

@@ -90,6 +90,9 @@ fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
     ) |>
     dplyr::select(-dplyr::ends_with("_rv")) |>
     dplyr::mutate(
+      label = stringr::str_remove(.data$label, " \\(C\\)$")
+    ) |>
+    dplyr::mutate(
       dimension_baseunit = dplyr::if_else(.data$parentEntity == .entity, FALSE, TRUE),
       report_type        = dplyr::if_else(.data$name == "weight", NA_character_, .data$report_type)
     ) |>

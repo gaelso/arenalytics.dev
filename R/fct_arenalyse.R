@@ -11,12 +11,16 @@
 #'       result variables, language, etc.).}
 #'     \item{schema_summary}{Data dictionary describing all input dimensions.}
 #'     \item{report_dimensions}{Available reporting dimensions.}
-#'     \item{OLAP_<entity>}{Wide-format OLAP table for the target entity.}
+#'     \item{MAU_<entity>}{Minimal Area Unit tables for the target entity.}
 #'   }
 #' @param .entity Character scalar. Name of the entity to analyse (e.g.
 #'   \code{"tree"}, \code{"plot"}).
 #' @param .dim Character vector. Names of the reporting dimensions to include
 #'   (e.g. \code{c("plot_forest_type", "plot_province")}).
+#' @param .cm Compute mode, One of `"fast"` or `"safe"`. `"fast"` computes all
+#'   measures in a single survey summary call; `"safe"` computes each measure
+#'   separately and keeps partial results when some measures fail. Defaults to
+#'   `"fast"`.
 #' @param .pb_ss A Shiny session for [shinyWidgets::updateProgressBar()].
 #'   Default `NULL`.
 #' @param .pb_id The widget ID for [shinyWidgets::updateProgressBar()].
@@ -35,14 +39,17 @@
 #' @importFrom rlang .data
 #'
 #' @export
-fct_arenalyse <- function(.zip, .entity, .dim, .pb_ss = NULL, .pb_id = NULL) {
+fct_arenalyse <- function(.zip, .entity, .dim, .cm = c("fast", "safe"), .pb_ss = NULL, .pb_id = NULL) {
 
   ## !!! FOR TESTING ONLY
   # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip")$data
+  # .zip <- fct_readzip2(.path = "~/syncwork/FAO-2026/support/support-arenalytics/MAU_Shiny_(png_nfi_2024_upperplant) 2.zip")$data
   # .entity <- .zip$chain_summary$analysis$entity
   # .dim <- .zip$chain_summary$analysis$dimensions
   # .dim
-  # pb_ss = NULL ; .pb_id = NULL
+  # .dim <- "cluster_forest_type"
+  # .dim <- "stratum_calc"
+  # .cm = "fast" ; .pb_ss = NULL ; .pb_id = NULL
   ## !!!
 
   ## ++ ##
@@ -60,6 +67,8 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pb_ss = NULL, .pb_id = NULL) {
 
   ## 0. Coerce inputs ------
   log_step(paste0("Preparing analysis for entity '", .entity, "'."), value = 5)
+  .cm <- match.arg(.cm)
+
   .zip$chain_summary$resultVariables <- tibble::as_tibble(
     .zip$chain_summary$resultVariables
   )
@@ -81,6 +90,13 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pb_ss = NULL, .pb_id = NULL) {
     .zip = .zip, .entity = .entity, .entity_prefix = entity_prefix
   )
   log_step("Entity metadata loaded.", value = 15)
+
+  old_survey_opt <- options(
+    survey.ultimate.cluster = FALSE,
+    survey.adjust.domain.lonely = TRUE,
+    survey.lonely.psu = "adjust"
+  )
+  on.exit(options(old_survey_opt), add = TRUE)
   ## ++ ##
 
   ## 3. Analysis configuration ------
@@ -136,7 +152,7 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pb_ss = NULL, .pb_id = NULL) {
   }
 
   ## ++ ##
-  log_step("Filtering OLAP rows and preparing analysis table.", value = 25)
+  log_step("Filtering MAU rows and preparing analysis table.", value = 25)
   ## ++ ##
 
   df_data <- wt |>
@@ -298,98 +314,106 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pb_ss = NULL, .pb_id = NULL) {
   }
 
   ## 9. Survey estimation ------
-  # t0 <- Sys.time()
-  #
-  # out_mean_test <- design |>
-  #   dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
-  #   dplyr::summarise(
-  #     dplyr::across(
-  #       .cols = dplyr::any_of(measures),
-  #       .fns  = list(~srvyr::survey_mean(
-  #         .x, na.rm = FALSE, vartype = c("se", "ci"),
-  #         proportion = FALSE, level = chain$analysis$pValue, df = Inf
-  #       ))
-  #     )
-  #   ) |>
-  #   ## srvyr list-output suffix: _1 -> _1_ (placeholder, resolved in step 11)
-  #   dplyr::rename_with(
-  #     ~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1")
-  #   )
-  # message(
-  #   "survey_mean(): ", round(difftime(Sys.time(), t0, units = "secs"), 1), "s"
-  # )
-
   ## !!! TESTING MAP OVER MEASURES TO INC PROGRESS BAR
   t0 <- Sys.time()
 
-  read_errors <- character(0)
-  measure_n <- length(measures)
-
-  ## ++ ##
-  out_mean <- purrr::imap(measures, function(m, idx) {
-
-    tt <- tryCatch(
-      {
-        design |>
-          dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
-          dplyr::summarise(
-            dplyr::across(
-              .cols = dplyr::any_of(m),
-              .fns  = list(~srvyr::survey_mean(
-                .x, na.rm = FALSE, vartype = c("se", "ci"),
-                proportion = FALSE, level = chain$analysis$pValue, df = Inf
-              ))
-            )
-          ) |>
-          ## srvyr suffix: _1 -> _1_ (placeholder, resolved in step 11)
-          dplyr::rename_with(
-            ~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1")
-          )
-      },
-      warning = function(w) {
-        msg <- conditionMessage(w)
-        message(sprintf(
-          "[%s] WARNING computing %s \u2014 %s",
-          format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m, msg
-        ))
-        read_errors[[m]] <<- msg  # <<- writes to the enclosing map() env
-        NULL
-        #invokeRestart("muffleWarning")  # log and resume; do not abort
-      },
-      error = function(e) {
-        msg <- conditionMessage(e)
-        message(sprintf(
-          "[%s] ERROR computing %s \u2014 %s",
-          format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m, msg
-        ))
-        read_errors[[m]] <<- msg  # <<- writes to the enclosing map() env
-        NULL
-      }
-    )
-
-    if (!is.null(tt)) {
-      log_step(
-        paste0("Processed measure ", idx, "/", measure_n, ": ", m, "."),
-        value = 50 + (idx / max(measure_n, 1)) * 35
+  if (.cm == "fast") { 
+    log_step("Computing survey means in fast mode.", value = 50)
+    Sys.sleep(0.1)
+    log_step("Wait! Executing the {survey} package...", value = 50)
+    
+    out_mean <- design |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
+      dplyr::summarise(
+        dplyr::across(
+          .cols = dplyr::any_of(measures),
+          .fns  = list(~srvyr::survey_mean(
+            .x, na.rm = FALSE, vartype = c("se", "ci"),
+            proportion = FALSE, level = chain$analysis$pValue, df = Inf
+          ))
+        )
+      ) |>
+      dplyr::rename_with(
+        ~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1")
       )
+
+    ## Add test for NULL or NA in all measures (unlikely)
+    check_na <- out_mean |> dplyr::select(dplyr::where(~all(is.na(.))))
+    check_na <- ncol(check_na) == 4 * length(measures)
+
+    check_null <- ncol(out_mean) == length(dims)
+
+    if (check_na | check_null) stop("All measures NA or NULL") 
+
+  } else {
+    read_errors <- character(0)
+    measure_n <- length(measures)
+
+    log_step("Computing survey means in safe mode.", value = 50)
+    Sys.sleep(0.1)
+    log_step("Wait! Executing the {survey} package...", value = 50)
+
+    ## ++ ##
+    out_mean <- purrr::imap(measures, function(m, idx) {
+      tt <- tryCatch(
+        {
+          design |>
+            dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
+            dplyr::summarise(
+              dplyr::across(
+                .cols = dplyr::any_of(m),
+                .fns  = list(~srvyr::survey_mean(
+                  .x, na.rm = FALSE, vartype = c("se", "ci"),
+                  proportion = FALSE, level = chain$analysis$pValue, df = Inf
+                ))
+              )
+            ) |>
+            ## srvyr suffix: _1 -> _1_ (placeholder, resolved in step 11)
+            dplyr::rename_with(
+              ~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1")
+            )
+        },
+        warning = function(w) {
+          msg <- conditionMessage(w)
+          message(sprintf(
+            "[%s] WARNING computing %s \u2014 %s",
+            format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m, msg
+          ))
+          read_errors[[m]] <<- msg
+          NULL
+        },
+        error = function(e) {
+          msg <- conditionMessage(e)
+          message(sprintf(
+            "[%s] ERROR computing %s \u2014 %s",
+            format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m, msg
+          ))
+          read_errors[[m]] <<- msg
+          NULL
+        }
+      )
+
+      if (!is.null(tt)) {
+        log_step(
+          paste0("Processed measure ", idx, "/", measure_n, ": ", m, "."),
+          value = 50 + (idx / max(measure_n, 1)) * 35
+        )
+      }
+
+      tt
+    })
+    ## ++ ##
+
+    out_mean <- purrr::compact(out_mean)
+
+    if (length(out_mean) == 0) {
+      stop("No measures were successfully computed. Check warnings and errors for details.")
     }
 
-    tt
+    out_mean <- purrr::reduce(out_mean, dplyr::left_join, by = dims)
 
-  }) ## End res_list
-  ## ++ ##
+  } ## End IF out_mean calc
 
-  ## Handle cases where output is all NULL
-  out_mean <- purrr::compact(out_mean)
-
-  if (length(out_mean) == 0) {
-    stop(
-      "No measures were successfully computed. Check warnings and errors for 
-      details."
-    )
-  }
-
-  out_mean <- purrr::reduce(out_mean, dplyr::left_join, by = dims)
   log_step(
     paste(
       "survey_mean() completed in: ",
