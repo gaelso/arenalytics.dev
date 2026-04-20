@@ -12,7 +12,7 @@
 #'   returns `NULL` immediately with a descriptive error message.
 #'
 #' @param .path A path to the data ZIP file.
-#' @param .pb_session A Shiny session for [shinyWidgets::updateProgressBar()].
+#' @param .pb_ss A Shiny session for [shinyWidgets::updateProgressBar()].
 #'   Default `NULL` (progress bar is only updated inside a Shiny context).
 #' @param .pb_id The widget ID for [shinyWidgets::updateProgressBar()].
 #'   Default `NULL`.
@@ -40,12 +40,12 @@
 #' }
 #'
 #' @export
-fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL, .entity_prefix = "MAU_") {
+fct_readzip2 <- function(.path, .pb_ss = NULL, .pb_id = NULL, .entity_prefix = "MAU_") {
 
   ## !!! FOR TESTING ONLY
   # .path = "inst/extdata/OLAP_shiny_demo.zip"
   # .path = "inst/extdata/OLAP_shiny_demo_corrupted.zip"
-  # .pb_session = NULL ; .pb_id = NULL ; .entity_prefix = "MAU_"
+  # .pb_ss = NULL ; .pb_id = NULL ; .entity_prefix = "MAU_"
   # !!!
 
 
@@ -121,9 +121,9 @@ fct_readzip2 <- function(.path, .pb_session = NULL, .pb_id = NULL, .entity_prefi
     }
 
     ## Update progress bar when running inside Shiny
-    if (!is.null(.pb_session) && !is.null(.pb_id)) {
+    if (!is.null(.pb_ss) && !is.null(.pb_id)) {
       shinyWidgets::updateProgressBar(
-        session = .pb_session,
+        session = .pb_ss,
         id      = .pb_id,
         value   = round(pct)
       )

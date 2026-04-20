@@ -4,7 +4,7 @@
 \alias{fct_arenalyse}
 \title{Run survey estimation for a given entity and set of reporting dimensions}
 \usage{
-fct_arenalyse(.zip, .entity, .dim)
+fct_arenalyse(.zip, .entity, .dim, .pb_ss = NULL, .pb_id = NULL)
 }
 \arguments{
 \item{.zip}{Named list produced by \code{fct_readzip2()}. Must contain:
@@ -21,6 +21,12 @@ result variables, language, etc.).}
 
 \item{.dim}{Character vector. Names of the reporting dimensions to include
 (e.g. \code{c("plot_forest_type", "plot_province")}).}
+
+\item{.pb_ss}{A Shiny session for \code{\link[shinyWidgets:progress-bar]{shinyWidgets::updateProgressBar()}}.
+Default \code{NULL}.}
+
+\item{.pb_id}{The widget ID for \code{\link[shinyWidgets:progress-bar]{shinyWidgets::updateProgressBar()}}.
+Default \code{NULL}.}
 }
 \value{
 A named list with two elements:
@@ -30,8 +36,8 @@ confidence intervals for each measure × dimension combination.}
 \item{TOTALS}{Tibble of estimated totals derived from \code{MEANS} by
 multiplying by expansion area.}
 }
-Both tibbles include \code{area}, \code{item_count}, \code{base_unit_count},
-and optionally \code{cluster_count} columns.
+Both tibbles include \code{area}, \code{item_count},
+\code{base_unit_count}, and optionally \code{cluster_count} columns.
 }
 \description{
 Computes weighted means and totals per hectare for all measures of a selected

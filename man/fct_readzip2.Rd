@@ -4,16 +4,19 @@
 \alias{fct_readzip2}
 \title{Read OpenForis Arena OLAP zipfile data (error-safe version)}
 \usage{
-fct_readzip2(.path, .pb_session = NULL, .pb_id = NULL)
+fct_readzip2(.path, .pb_ss = NULL, .pb_id = NULL, .entity_prefix = "MAU_")
 }
 \arguments{
 \item{.path}{A path to the data ZIP file.}
 
-\item{.pb_session}{A Shiny session for \code{\link[shinyWidgets:progress-bar]{shinyWidgets::updateProgressBar()}}.
+\item{.pb_ss}{A Shiny session for \code{\link[shinyWidgets:progress-bar]{shinyWidgets::updateProgressBar()}}.
 Default \code{NULL} (progress bar is only updated inside a Shiny context).}
 
 \item{.pb_id}{The widget ID for \code{\link[shinyWidgets:progress-bar]{shinyWidgets::updateProgressBar()}}.
 Default \code{NULL}.}
+
+\item{.entity_prefix}{A character describing how OpenForis Arena prefix entity
+tables. Default "MAU_".}
 }
 \value{
 A named list of entity data frames and survey descriptors, or

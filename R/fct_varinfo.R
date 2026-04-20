@@ -117,7 +117,7 @@ fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
   ## Filter out dims with no data
   report_dims <- .zip$report_dimensions |>
     dplyr::filter(.data$entity == .entity) |>
-    dplyr::pull(dimension)
+    dplyr::pull("dimension")
 
   wt_names <- wt_names |>
     dplyr::filter((.data$report_type == "dimension" & .data$name %in% report_dims) | .data$report_type != "dimension")

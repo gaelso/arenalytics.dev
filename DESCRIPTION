@@ -11,9 +11,6 @@ RoxygenNote: 7.3.3
 Imports: 
     bsicons,
     bslib,
-    crosstalk,
-    d3scatter (>= 0.1.0),
-    datasets,
     DT,
     dplyr,
     ggplot2,

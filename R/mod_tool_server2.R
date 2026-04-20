@@ -1,6 +1,6 @@
 #' Tool module server function
 #'
-#' @importFrom rlang .data
+#' @importFrom rlang .data :=
 #'
 #' @noRd
 mod_tool_server2 <- function(id, rv) {
@@ -274,7 +274,7 @@ mod_tool_server2 <- function(id, rv) {
         )
       } else {
         rv$analysis$measures_meta <- rv$inputs$var_meta[[input$analysis_sel_entity]] |>
-          dplyr::filter(report_type == "measure")
+          dplyr::filter(.data$report_type == "measure")
       }
 
       shinyjs::disable("btn_run_analysis")
