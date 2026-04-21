@@ -16,16 +16,22 @@ mod_tool_server2 <- function(id, rv) {
     # rv <- list()
     # rv$inputs <- list()
     # # rv$inputs$path_zip <- system.file("extdata/OLAP_Shiny_demo.zip", package = "arenalytics")
-    # rv$inputs$path_zip <- "/Users/gaelsola/syncwork/FAO-2026/support/support-arenalytics/MAU_Shiny_(png_nfi_2024_upperplant) 1.zip"
+    # rv$inputs$path_zip <- "data-raw/MAU_Shiny_(png_nfi_2024_upperplant) 1.zip"
     # rv$inputs$check_zip <- fct_checkzip(.path = rv$inputs$path_zip, .entity_prefix = .ep)
     # rv$inputs      <- fct_readzip2(.path = rv$inputs$path_zip, .entity_prefix = .ep)
     # input <- list()
     # input$analysis_sel_entity <- "tree"
     # input$analysis_sel_dims <- c("cluster_forest_type", "dbh_up100_10cm")
-    # result <- fct_arenalyse(.zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = input$analysis_sel_dims, .cm = "fast")
+    # result <- fct_arenalyse(
+    #   .zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = input$analysis_sel_dims,
+    #   .cm = "fast", .lonely = "remove"
+    # )
     # rv$insights <- list()
     # dims_sel <- c("cluster_forest_type", "stratum_calc")
-    # result <- fct_arenalyse(.zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = dims_sel, .cm = "fast")
+    # result <- fct_arenalyse(
+    #   .zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = dims_sel,
+    #   .cm = "fast", .lonely = "remove"
+    #   )
     ## !!!
 
 
@@ -331,12 +337,13 @@ mod_tool_server2 <- function(id, rv) {
               area_result
             } else {
               fct_arenalyse(
-                .zip = rv$inputs$data,
+                .zip    = rv$inputs$data,
                 .entity = input$analysis_sel_entity,
-                .dim = dims_sel,
-                .cm = "fast",
-                .pb_ss = session,
-                .pb_id = "analysis_progress_bar"
+                .dim    = dims_sel,
+                .cm     = "fast",
+                .lonely = input$analysis_lonely_psu,
+                .pb_ss  = session,
+                .pb_id  = "analysis_progress_bar"
               )
 
             }

@@ -140,6 +140,17 @@ mod_tool_UI2 <- function(id, i18n, .tr){
     ## Warning when more than 4 dimensions are selected
     uiOutput(ns("analysis_too_many_dims")),
 
+    ## Lonely-PSU strategy
+    shinyWidgets::radioGroupButtons(
+      inputId  = ns("analysis_lonely_psu"),
+      label    = "Lonely PSU handling",
+      choices  = c("Adjust (conservative)" = "adjust",
+                   "Remove (permissive)"   = "remove"),
+      selected = "adjust",
+      size     = "xs",
+      justified = TRUE
+    ),
+
     ## Run button
     div(
       style = "margin-top: 1rem;",

@@ -19,8 +19,21 @@
 #'   (e.g. \code{c("plot_forest_type", "plot_province")}).
 #' @param .cm Compute mode, One of `"fast"` or `"safe"`. `"fast"` computes all
 #'   measures in a single survey summary call; `"safe"` computes each measure
-#'   separately and keeps partial results when some measures fail. Defaults to
-#'   `"fast"`.
+#'   separately and keeps partial results when some measures fail.
+#' @param .lonely Lonely-PSU handling strategy. One of:
+#'   \describe{
+#'     \item{`"adjust"` (default)}{Substitutes the grand mean across strata for
+#'       the single-PSU stratum's variance contribution, extended to domain
+#'       (grouped) estimates via \code{survey.adjust.domain.lonely = TRUE}.
+#'       Produces a conservative (upward-biased) but valid SE. Recommended when
+#'       fine-grained cross-tabulations are expected.}
+#'     \item{`"remove"`}{Drops the lone stratum from variance computation
+#'       (\code{survey.adjust.domain.lonely = FALSE}). Faster and less
+#'       conservative, but can silently underestimate SE for affected groups.
+#'       May still error on domain estimates if the lonely PSU falls within a
+#'       reporting group — safe only when base-unit dimensions are few and
+#'       strata are well-populated.}
+#'   }
 #' @param .pb_ss A Shiny session for [shinyWidgets::updateProgressBar()].
 #'   Default `NULL`.
 #' @param .pb_id The widget ID for [shinyWidgets::updateProgressBar()].
@@ -39,7 +52,7 @@
 #' @importFrom rlang .data
 #'
 #' @export
-fct_arenalyse <- function(.zip, .entity, .dim, .cm = c("fast", "safe"), .pb_ss = NULL, .pb_id = NULL) {
+fct_arenalyse <- function(.zip, .entity, .dim, .cm, .lonely = "adjust", .pb_ss = NULL, .pb_id = NULL) {
 
   ## !!! FOR TESTING ONLY
   # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip")$data
@@ -67,7 +80,6 @@ fct_arenalyse <- function(.zip, .entity, .dim, .cm = c("fast", "safe"), .pb_ss =
 
   ## 0. Coerce inputs ------
   log_step(paste0("Preparing analysis for entity '", .entity, "'."), value = 5)
-  .cm <- match.arg(.cm)
 
   .zip$chain_summary$resultVariables <- tibble::as_tibble(
     .zip$chain_summary$resultVariables
@@ -91,10 +103,21 @@ fct_arenalyse <- function(.zip, .entity, .dim, .cm = c("fast", "safe"), .pb_ss =
   )
   log_step("Entity metadata loaded.", value = 15)
 
+  ## Validate .lonely
+  .lonely <- match.arg(.lonely, choices = c("adjust", "remove"))
+
+  ## Temporarily override survey options for the duration of this call and
+  ## restore the caller's options on exit (even if the function errors).
+  ##   "adjust": grand mean substituted for the lone stratum's variance —
+  ##             conservative but valid SE; adjust.domain.lonely = TRUE extends
+  ##             this to grouped/domain estimates (what this function produces).
+  ##   "remove": lone stratum dropped from variance; adjust.domain.lonely = FALSE.
+  ##             SE may be underestimated for affected groups; can still error on
+  ##             domain estimates where the lonely PSU falls inside a group.
   old_survey_opt <- options(
-    survey.ultimate.cluster = FALSE,
-    survey.adjust.domain.lonely = TRUE,
-    survey.lonely.psu = "adjust"
+    survey.ultimate.cluster     = FALSE,
+    survey.lonely.psu           = .lonely,
+    survey.adjust.domain.lonely = (.lonely == "adjust")
   )
   on.exit(options(old_survey_opt), add = TRUE)
   ## ++ ##
@@ -317,25 +340,47 @@ fct_arenalyse <- function(.zip, .entity, .dim, .cm = c("fast", "safe"), .pb_ss =
   ## !!! TESTING MAP OVER MEASURES TO INC PROGRESS BAR
   t0 <- Sys.time()
 
-  if (.cm == "fast") { 
+  ## Helper: identify lonely-PSU warnings from the survey package
+  is_lonely_psu_warn <- function(w) {
+    grepl("only one PSU", conditionMessage(w), fixed = TRUE)
+  }
+
+  if (.cm == "fast") {
     log_step("Computing survey means in fast mode.", value = 50)
     Sys.sleep(0.1)
     log_step("Wait! Executing the {survey} package...", value = 50)
-    
-    out_mean <- design |>
-      dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
-      dplyr::summarise(
-        dplyr::across(
-          .cols = dplyr::any_of(measures),
-          .fns  = list(~srvyr::survey_mean(
-            .x, na.rm = FALSE, vartype = c("se", "ci"),
-            proportion = FALSE, level = chain$analysis$pValue, df = Inf
-          ))
-        )
-      ) |>
-      dplyr::rename_with(
-        ~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1")
-      )
+
+    lonely_n <- 0L
+    out_mean <- withCallingHandlers(
+      {
+        design |>
+          dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
+          dplyr::summarise(
+            dplyr::across(
+              .cols = dplyr::any_of(measures),
+              .fns  = list(~srvyr::survey_mean(
+                .x, na.rm = FALSE, vartype = c("se", "ci"),
+                proportion = FALSE, level = chain$analysis$pValue, df = Inf
+              ))
+            )
+          ) |>
+          dplyr::rename_with(
+            ~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1")
+          )
+      },
+      warning = function(w) {
+        if (is_lonely_psu_warn(w)) {
+          lonely_n <<- lonely_n + 1L
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
+    if (lonely_n > 0L) {
+      log_step(sprintf(
+        "Note: %d domain group(s) had a lonely PSU \u2014 SE adjusted via grand-mean substitution.",
+        lonely_n
+      ))
+    }
 
     ## Add test for NULL or NA in all measures (unlikely)
     check_na <- out_mean |> dplyr::select(dplyr::where(~all(is.na(.))))
@@ -343,7 +388,7 @@ fct_arenalyse <- function(.zip, .entity, .dim, .cm = c("fast", "safe"), .pb_ss =
 
     check_null <- ncol(out_mean) == length(dims)
 
-    if (check_na | check_null) stop("All measures NA or NULL") 
+    if (check_na | check_null) stop("All measures NA or NULL")
 
   } else {
     read_errors <- character(0)
@@ -355,24 +400,36 @@ fct_arenalyse <- function(.zip, .entity, .dim, .cm = c("fast", "safe"), .pb_ss =
 
     ## ++ ##
     out_mean <- purrr::imap(measures, function(m, idx) {
+      lonely_n <- 0L
       tt <- tryCatch(
-        {
-          design |>
-            dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
-            dplyr::summarise(
-              dplyr::across(
-                .cols = dplyr::any_of(m),
-                .fns  = list(~srvyr::survey_mean(
-                  .x, na.rm = FALSE, vartype = c("se", "ci"),
-                  proportion = FALSE, level = chain$analysis$pValue, df = Inf
-                ))
+        ## withCallingHandlers runs first: lonely-PSU warnings are muffled
+        ## and counted before they reach the outer tryCatch warning handler,
+        ## so they no longer cause the measure to be dropped.
+        withCallingHandlers(
+          {
+            design |>
+              dplyr::group_by(dplyr::across(dplyr::all_of(dims))) |>
+              dplyr::summarise(
+                dplyr::across(
+                  .cols = dplyr::any_of(m),
+                  .fns  = list(~srvyr::survey_mean(
+                    .x, na.rm = FALSE, vartype = c("se", "ci"),
+                    proportion = FALSE, level = chain$analysis$pValue, df = Inf
+                  ))
+                )
+              ) |>
+              ## srvyr suffix: _1 -> _1_ (placeholder, resolved in step 11)
+              dplyr::rename_with(
+                ~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1")
               )
-            ) |>
-            ## srvyr suffix: _1 -> _1_ (placeholder, resolved in step 11)
-            dplyr::rename_with(
-              ~stringr::str_replace(.x, "_1$", "_1_"), dplyr::ends_with("_1")
-            )
-        },
+          },
+          warning = function(w) {
+            if (is_lonely_psu_warn(w)) {
+              lonely_n <<- lonely_n + 1L
+              invokeRestart("muffleWarning")
+            }
+          }
+        ),
         warning = function(w) {
           msg <- conditionMessage(w)
           message(sprintf(
@@ -392,6 +449,12 @@ fct_arenalyse <- function(.zip, .entity, .dim, .cm = c("fast", "safe"), .pb_ss =
           NULL
         }
       )
+      if (!is.null(tt) && lonely_n > 0L) {
+        message(sprintf(
+          "[%s] Note (%s): %d domain group(s) had a lonely PSU \u2014 SE adjusted via grand-mean substitution.",
+          format(Sys.time(), "%Y-%m-%d %H:%M:%S"), m, lonely_n
+        ))
+      }
 
       if (!is.null(tt)) {
         log_step(
