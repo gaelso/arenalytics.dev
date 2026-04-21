@@ -1003,13 +1003,17 @@ mod_tool_server2 <- function(id, rv) {
     }
     ## $$$
 
-    ## . + MEANS bar plot ----------------------------------------------------
-    output$analysis_plot_means <- renderPlot({
-      req(rv$analysis$result, input$plot_dim, input$plot_measure)
+    ## ++ ##
+    build_analysis_plot <- function(source = c("MEANS", "TOTALS")) {
+      source <- match.arg(source)
+
       validation <- get_plot_validation()
-      validate(need(validation$ok, validation$message))
+      if (!isTRUE(validation$ok)) {
+        stop(validation$message, call. = FALSE)
+      }
+
       make_bar_plot(
-        df                = filtered_analysis_df("MEANS"),
+        df                = filtered_analysis_df(source),
         x_dim             = input$plot_dim,
         measure           = input$plot_measure,
         fill_col          = input$plot_fill,
@@ -1020,10 +1024,30 @@ mod_tool_server2 <- function(id, rv) {
         hide_legend       = isTRUE(input$plot_hide_legend),
         dim_meta          = rv$analysis$dim_meta,
         measures_meta     = rv$analysis$measures_meta,
-        ## $$$
-        extra_filter_vals = get_filter_vals()
-        ## $$$
+        extra_filter_vals = get_filter_vals(),
+        comma_y           = identical(source, "TOTALS")
       )
+    }
+
+    analysis_report_table <- function() {
+      req(input$analysis_table_source)
+      table_display_df(input$analysis_table_source)
+    }
+
+    safe_file_stub <- function(x) {
+      x |>
+        stringr::str_replace_all("[^A-Za-z0-9]+", "_") |>
+        stringr::str_replace_all("^_+|_+$", "") |>
+        tolower()
+    }
+    ## ++ ##
+
+    ## . + MEANS bar plot ----------------------------------------------------
+    output$analysis_plot_means <- renderPlot({
+      req(rv$analysis$result, input$plot_dim, input$plot_measure)
+      validation <- get_plot_validation()
+      validate(need(validation$ok, validation$message))
+      build_analysis_plot("MEANS")
     })
 
     ## . + TOTALS bar plot ---------------------------------------------------
@@ -1031,24 +1055,110 @@ mod_tool_server2 <- function(id, rv) {
       req(rv$analysis$result, input$plot_dim, input$plot_measure)
       validation <- get_plot_validation()
       validate(need(validation$ok, validation$message))
-      make_bar_plot(
-        df                = filtered_analysis_df("TOTALS"),
-        x_dim             = input$plot_dim,
-        measure           = input$plot_measure,
-        fill_col          = input$plot_fill,
-        facet_col         = input$plot_facet,
-        show_errbar       = isTRUE(input$plot_errbar),
-        flip_coords       = isTRUE(input$plot_flip),
-        wrap_labels       = isTRUE(input$plot_wrap_labels),
-        hide_legend       = isTRUE(input$plot_hide_legend),
-        dim_meta          = rv$analysis$dim_meta,
-        measures_meta     = rv$analysis$measures_meta,
-        ## $$$
-        extra_filter_vals = get_filter_vals(),
-        comma_y           = TRUE
-        ## $$$
-      )
+      build_analysis_plot("TOTALS")
     })
+
+    ## ++ ##
+    output$analysis_plot_means_download <- downloadHandler(
+      filename = function() {
+        paste0("means_plot_", safe_file_stub(input$plot_measure %||% "measure"), ".png")
+      },
+      content = function(file) {
+        ggplot2::ggsave(
+          filename = file,
+          plot = build_analysis_plot("MEANS"),
+          width = 10,
+          height = 6,
+          dpi = 300
+        )
+      }
+    )
+
+    output$analysis_plot_totals_download <- downloadHandler(
+      filename = function() {
+        paste0("totals_plot_", safe_file_stub(input$plot_measure %||% "measure"), ".png")
+      },
+      content = function(file) {
+        ggplot2::ggsave(
+          filename = file,
+          plot = build_analysis_plot("TOTALS"),
+          width = 10,
+          height = 6,
+          dpi = 300
+        )
+      }
+    )
+
+    output$analysis_report_download <- downloadHandler(
+      filename = function() {
+        req(rv$inputs$data, input$analysis_report_format)
+        survey_stub <- safe_file_stub(rv$inputs$data$chain_summary$surveyLabel %||% "survey")
+        ext <- if (identical(input$analysis_report_format, "docx")) "docx" else "html"
+        paste0("analysis_report_", survey_stub, ".", ext)
+      },
+      contentType = "application/octet-stream",
+      content = function(file) {
+        req(rv$analysis$result, rv$inputs$data, input$analysis_report_format)
+
+        report_dir <- tempfile(pattern = "arenalytics-report-")
+        dir.create(report_dir, recursive = TRUE, showWarnings = FALSE)
+
+        means_plot_file <- file.path(report_dir, "means-plot.png")
+        totals_plot_file <- file.path(report_dir, "totals-plot.png")
+        table_file <- file.path(report_dir, "analysis-table.csv")
+        qmd_template <- system.file("quarto", "analysis-report.qmd", package = "arenalytics.dev")
+        qmd_file <- file.path(report_dir, "analysis-report.qmd")
+
+        if (!nzchar(qmd_template)) {
+          stop("Report template not found.", call. = FALSE)
+        }
+
+        ok_copy <- file.copy(qmd_template, qmd_file, overwrite = TRUE)
+        if (!isTRUE(ok_copy)) {
+          stop("Could not prepare the report template.", call. = FALSE)
+        }
+
+        ggplot2::ggsave(means_plot_file, plot = build_analysis_plot("MEANS"), width = 10, height = 6, dpi = 300)
+        ggplot2::ggsave(totals_plot_file, plot = build_analysis_plot("TOTALS"), width = 10, height = 6, dpi = 300)
+        utils::write.csv(analysis_report_table(), table_file, row.names = FALSE)
+
+        rendered_file <- file.path(
+          report_dir,
+          paste0("analysis-report.", if (identical(input$analysis_report_format, "docx")) "docx" else "html")
+        )
+        rendered_name <- basename(rendered_file)
+
+        quarto::quarto_render(
+          input = qmd_file,
+          output_format = input$analysis_report_format,
+          execute_params = list(
+            survey_title = paste(
+              rv$inputs$data$chain_summary$surveyName,
+              rv$inputs$data$chain_summary$surveyLabel,
+              sep = " - "
+            ),
+            analysis_entity = input$analysis_sel_entity,
+            analysis_type = if (identical(input$analysis_mode, "area")) "Area" else "Other measures",
+            table_title = if (identical(input$analysis_table_source, "TOTALS")) "Totals" else "Means (per ha)",
+            table_csv = table_file,
+            means_plot = means_plot_file,
+            totals_plot = totals_plot_file
+          ),
+          output_file = rendered_name,
+          quiet = FALSE
+        )
+
+        if (!file.exists(rendered_file)) {
+          stop("Report generation failed.", call. = FALSE)
+        }
+
+        ok_out <- file.copy(rendered_file, file, overwrite = TRUE)
+        if (!isTRUE(ok_out)) {
+          stop("Could not copy the rendered report to the download target.", call. = FALSE)
+        }
+      }
+    )
+    ## ++ ##
 
     ## $$$
 

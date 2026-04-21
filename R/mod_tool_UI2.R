@@ -456,15 +456,36 @@ mod_tool_UI2 <- function(id, i18n, .tr){
           card(
             full_screen  = TRUE,
             card_header("Means (per ha)"),
-            plotOutput(ns("analysis_plot_means"), height = "400px")
+            plotOutput(ns("analysis_plot_means"), height = "400px"),
+            br(),
+            downloadButton(ns("analysis_plot_means_download"), "Download means plot (PNG)")
           ),
 
           ## -- TOTALS plot -------------------------------------------------
           card(
             full_screen  = TRUE,
             card_header("Totals"),
-            plotOutput(ns("analysis_plot_totals"), height = "400px")
+            plotOutput(ns("analysis_plot_totals"), height = "400px"),
+            br(),
+            downloadButton(ns("analysis_plot_totals_download"), "Download totals plot (PNG)")
+          ),
+
+          ## ++ ##
+          card(
+            card_header("Export report"),
+            layout_column_wrap(
+              width = "220px",
+              fill  = FALSE,
+              selectInput(
+                ns("analysis_report_format"),
+                "Report format",
+                choices = c("HTML" = "html", "Word" = "docx"),
+                selected = "html"
+              )
+            ),
+            downloadButton(ns("analysis_report_download"), "Download report")
           )
+          ## ++ ##
 
         ))
         ## ++ ##

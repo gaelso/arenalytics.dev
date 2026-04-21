@@ -1,0 +1,47 @@
+---
+title: "`r params$survey_title`"
+format:
+  html:
+    embed-resources: true
+    toc: false
+  docx: default
+params:
+  survey_title: "Survey"
+  analysis_entity: ""
+  analysis_type: ""
+  table_title: "Analysis table"
+  table_csv: ""
+  means_plot: ""
+  totals_plot: ""
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+table_df <- utils::read.csv(params$table_csv, check.names = FALSE)
+```
+
+## Analysis summary
+
+**Entity:** `r params$analysis_entity`  
+**Analysis type:** `r params$analysis_type`
+
+## `r params$table_title`
+
+```{r}
+knitr::kable(table_df, format = "pipe")
+```
+
+## Means plot
+
+```{r}
+knitr::include_graphics(params$means_plot)
+```
+
+## Totals plot
+
+```{r}
+knitr::include_graphics(params$totals_plot)
+```
