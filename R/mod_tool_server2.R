@@ -776,15 +776,13 @@ mod_tool_server2 <- function(id, rv) {
 
       df <- filtered_analysis_df(source)
       dim_names <- rv$analysis$dims %||% character(0)
-      ordered_dims <- input$analysis_table_dims %||% dim_names
-      remaining_dims <- setdiff(dim_names, ordered_dims)
       measure_names <- rv$analysis$measures_meta |> dplyr::pull("name")
-      selected_measures <- input$analysis_table_measures %||% measure_names
+      selected_measure <- input$analysis_sel_measure %||% measure_names[1]
 
       measure_cols <- names(df)[
         purrr::map_lgl(
           names(df),
-          \(col) any(stringr::str_detect(col, paste0("^", selected_measures, "($|_)")))
+          \(col) stringr::str_detect(col, paste0("^", selected_measure, "($|_)"))
         )
       ]
 
@@ -792,9 +790,55 @@ mod_tool_server2 <- function(id, rv) {
         purrr::map(measure_names, \(m) names(df)[stringr::str_detect(names(df), paste0("^", m, "($|_)"))])
       )))
 
-      keep_cols <- unique(c(ordered_dims, remaining_dims, other_cols, measure_cols))
+      keep_cols <- unique(c(dim_names, other_cols, measure_cols))
 
       dplyr::select(df, dplyr::all_of(keep_cols))
+    }
+
+    label_analysis_table_columns <- function(df) {
+      req(rv$analysis$dim_meta, rv$analysis$measures_meta)
+
+      dim_lookup <- rv$analysis$dim_meta |>
+        dplyr::filter(.data$report_type == "dimension") |>
+        (\(x) stats::setNames(x$label, x$name))()
+
+      selected_measure <- input$analysis_sel_measure %||%
+        (rv$analysis$measures_meta |> dplyr::pull("name") |> dplyr::first())
+      measure_label <- rv$analysis$measures_meta |>
+        dplyr::filter(.data$name == selected_measure) |>
+        dplyr::pull("label") |>
+        dplyr::first()
+
+      fixed_lookup <- c(
+        area = "Area",
+        item_count = "Item count",
+        base_unit_count = "Base unit count",
+        cluster_count = "Cluster count"
+      )
+
+      nice_names <- purrr::map_chr(names(df), function(col) {
+        if (col %in% names(dim_lookup)) {
+          return(dim_lookup[[col]])
+        }
+        if (col %in% names(fixed_lookup)) {
+          return(fixed_lookup[[col]])
+        }
+        if (identical(col, selected_measure)) {
+          return(measure_label)
+        }
+        if (identical(col, paste0(selected_measure, "_se"))) {
+          return(paste0(measure_label, " (SE)"))
+        }
+        if (identical(col, paste0(selected_measure, "_low"))) {
+          return(paste0(measure_label, " (Lower CI)"))
+        }
+        if (identical(col, paste0(selected_measure, "_upp"))) {
+          return(paste0(measure_label, " (Upper CI)"))
+        }
+        col
+      })
+
+      stats::setNames(df, nice_names)
     }
 
     get_plot_validation <- function() {
@@ -842,37 +886,23 @@ mod_tool_server2 <- function(id, rv) {
 
       n_dims <- length(dim_choices)
       optional_choices <- c("-- None --" = "", dim_choices)
-      fill_choices <- if (n_dims >= 2) optional_choices else c("-- None --" = "")
-      facet_choices <- if (n_dims >= 3) optional_choices else c("-- None --" = "")
-      default_fill <- if (n_dims >= 2) unname(dim_choices[2]) else ""
-      default_facet <- if (n_dims >= 3) unname(dim_choices[3]) else ""
+      facet_choices <- if (n_dims >= 2) optional_choices else c("-- None --" = "")
 
-      updateSelectInput(session, "plot_dim",     choices = dim_choices,     selected = dim_choices[1])
-      updateSelectInput(session, "plot_measure", choices = meas_choices,    selected = meas_choices[1])
-      updateSelectInput(session, "plot_fill",    choices = fill_choices, selected = default_fill)
-      updateSelectInput(session, "plot_facet",   choices = facet_choices, selected = default_facet)
-      shinyWidgets::updatePickerInput(
-        session = session,
-        inputId = "analysis_table_measures",
-        choices = meas_choices,
-        selected = meas_meta$name[1]
-      )
-      shinyWidgets::updatePickerInput(
-        session = session,
-        inputId = "analysis_table_dims",
-        choices = dim_choices,
-        selected = rv$analysis$dims
-      )
+      updateSelectInput(session, "analysis_sel_measure", choices = meas_choices, selected = meas_choices[1])
+      updateSelectInput(session, "plot_dim", choices = dim_choices, selected = dim_choices[1])
+      updateSelectInput(session, "plot_fill", choices = optional_choices, selected = "")
+      updateSelectInput(session, "plot_facet", choices = facet_choices, selected = "")
 
-      shinyjs::toggleState("plot_fill", condition = n_dims >= 2)
-      shinyjs::toggleState("plot_facet", condition = n_dims >= 3)
+      shinyjs::enable("plot_fill")
+      shinyjs::toggleState("plot_facet", condition = n_dims >= 2)
     })
 
     ## ++ ##
     output$analysis_table <- DT::renderDT({
-      req(rv$analysis$result, input$analysis_table_source)
+      req(rv$analysis$result, input$analysis_table_source, input$analysis_sel_measure)
 
-      table_df <- table_display_df(input$analysis_table_source)
+      table_df <- table_display_df(input$analysis_table_source) |>
+        label_analysis_table_columns()
 
       table_out <- DT::datatable(
         table_df,
@@ -895,9 +925,10 @@ mod_tool_server2 <- function(id, rv) {
 
     ## ++ ##
     observeEvent(input$analysis_table_copy, {
-      req(rv$analysis$result, input$analysis_table_source)
+      req(rv$analysis$result, input$analysis_table_source, input$analysis_sel_measure)
 
-      table_df <- table_display_df(input$analysis_table_source)
+      table_df <- table_display_df(input$analysis_table_source) |>
+        label_analysis_table_columns()
       txt <- paste(
         c(
           paste(names(table_df), collapse = "\t"),
@@ -972,7 +1003,7 @@ mod_tool_server2 <- function(id, rv) {
       if (length(filter_inputs) == 0) return(NULL)
 
       div(
-        style = "margin-top: 0.75rem; border-top: 1px solid #dee2e6; padding-top: 0.75rem;",
+        style = "margin-top: 0.75rem;",
         tags$small(class = "text-muted", bsicons::bs_icon("funnel"), " Dimension filters"),
         layout_column_wrap(width = "180px", fill = FALSE, !!!filter_inputs)
       )
@@ -1015,7 +1046,7 @@ mod_tool_server2 <- function(id, rv) {
       make_bar_plot(
         df                = filtered_analysis_df(source),
         x_dim             = input$plot_dim,
-        measure           = input$plot_measure,
+        measure           = input$analysis_sel_measure,
         fill_col          = input$plot_fill,
         facet_col         = input$plot_facet,
         show_errbar       = isTRUE(input$plot_errbar),
@@ -1044,7 +1075,7 @@ mod_tool_server2 <- function(id, rv) {
 
     ## . + MEANS bar plot ----------------------------------------------------
     output$analysis_plot_means <- renderPlot({
-      req(rv$analysis$result, input$plot_dim, input$plot_measure)
+      req(rv$analysis$result, input$plot_dim, input$analysis_sel_measure)
       validation <- get_plot_validation()
       validate(need(validation$ok, validation$message))
       build_analysis_plot("MEANS")
@@ -1052,7 +1083,7 @@ mod_tool_server2 <- function(id, rv) {
 
     ## . + TOTALS bar plot ---------------------------------------------------
     output$analysis_plot_totals <- renderPlot({
-      req(rv$analysis$result, input$plot_dim, input$plot_measure)
+      req(rv$analysis$result, input$plot_dim, input$analysis_sel_measure)
       validation <- get_plot_validation()
       validate(need(validation$ok, validation$message))
       build_analysis_plot("TOTALS")
@@ -1061,7 +1092,7 @@ mod_tool_server2 <- function(id, rv) {
     ## ++ ##
     output$analysis_plot_means_download <- downloadHandler(
       filename = function() {
-        paste0("means_plot_", safe_file_stub(input$plot_measure %||% "measure"), ".png")
+        paste0("means_plot_", safe_file_stub(input$analysis_sel_measure %||% "measure"), ".png")
       },
       content = function(file) {
         ggplot2::ggsave(
@@ -1076,7 +1107,7 @@ mod_tool_server2 <- function(id, rv) {
 
     output$analysis_plot_totals_download <- downloadHandler(
       filename = function() {
-        paste0("totals_plot_", safe_file_stub(input$plot_measure %||% "measure"), ".png")
+        paste0("totals_plot_", safe_file_stub(input$analysis_sel_measure %||% "measure"), ".png")
       },
       content = function(file) {
         ggplot2::ggsave(

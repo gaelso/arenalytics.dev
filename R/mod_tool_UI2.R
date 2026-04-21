@@ -357,8 +357,24 @@ mod_tool_UI2 <- function(id, i18n, .tr){
 
           ## ++ ##
           ## -- Row 1: analysis table --------------------------------------
+          ## ++ ##
           card(
-            card_header("Analysis data used for figures"),
+            card_header("Cross outputs settings"),
+            layout_column_wrap(
+              width = "220px",
+              fill  = FALSE,
+              selectInput(
+                ns("analysis_sel_measure"),
+                "Measure",
+                choices = NULL,
+                selected = NULL
+              )
+            ),
+            uiOutput(ns("analysis_extra_filters"))
+          ),
+
+          card(
+            card_header("Results table"),
             layout_column_wrap(
               width = "220px",
               fill  = FALSE,
@@ -367,65 +383,43 @@ mod_tool_UI2 <- function(id, i18n, .tr){
                 "Table source",
                 choices = c("Means (per ha)" = "MEANS", "Totals" = "TOTALS"),
                 selected = "MEANS"
-              ),
-              shinyWidgets::pickerInput(
-                ns("analysis_table_measures"),
-                "Measures shown in table",
-                choices = NULL,
-                selected = NULL,
-                multiple = TRUE,
-                options = list(
-                  `actions-box` = TRUE,
-                  `selected-text-format` = "count > 3"
-                )
-              ),
-              shinyWidgets::pickerInput(
-                ns("analysis_table_dims"),
-                "Dimension column order",
-                choices = NULL,
-                selected = NULL,
-                multiple = TRUE,
-                options = list(
-                  `actions-box` = TRUE,
-                  `selected-text-format` = "count > 3"
-                )
               )
             ),
-            ## ++ ##
             div(
               style = "display: flex; gap: 0.75rem; align-items: center; margin: 0.75rem 0;",
               actionButton(
                 ns("analysis_table_copy"),
-                "Copy visible table"
+                "Copy visible table",
+                class = "btn-sm"
               ),
               downloadButton(
                 ns("analysis_table_download"),
-                "Download full table (CSV)"
+                "Download full table (CSV)",
+                class = "btn-sm"
               )
             ),
-            ## ++ ##
             DT::DTOutput(ns("analysis_table"))
           ),
 
-          ## -- Row 2: main plot controls ----------------------------------
           card(
+            card_header("Figure settings"),
             layout_column_wrap(
               width = "180px",
               fill  = FALSE,
-              selectInput(ns("plot_dim"),     "X-axis dimension", choices = NULL),
-              selectInput(ns("plot_measure"), "Measure (Y axis)", choices = NULL),
-              ## $$$
-              ## selectInput(ns("plot_fill"),  "Group by (fill)", choices = NULL),
-              ## selectInput(ns("plot_facet"), "Facet by",        choices = NULL),
-              selectizeInput(ns("plot_fill"),  "Group by (fill)", choices = NULL,
-                             options = list(placeholder = "-- none --", allowEmptyOption = TRUE)),
-              selectizeInput(ns("plot_facet"), "Facet by",        choices = NULL,
-                             options = list(placeholder = "-- none --", allowEmptyOption = TRUE))
-              ## $$$
+              selectInput(ns("plot_dim"), "X-axis dimension", choices = NULL),
+              selectizeInput(
+                ns("plot_fill"),
+                "Group by",
+                choices = NULL,
+                options = list(placeholder = "-- none --", allowEmptyOption = TRUE)
+              ),
+              selectizeInput(
+                ns("plot_facet"),
+                "Facet by",
+                choices = NULL,
+                options = list(placeholder = "-- none --", allowEmptyOption = TRUE)
+              )
             ),
-            ## -- Row 3: extra dimension filters (shown only when >3 dims used) --
-            uiOutput(ns("analysis_extra_filters")),
-            ## ++ ##
             hr(style = "margin: 0.9rem 0 0.75rem 0;"),
             layout_column_wrap(
               width = "180px",
@@ -446,44 +440,60 @@ mod_tool_UI2 <- function(id, i18n, .tr){
                 class = "pt-1",
                 checkboxInput(ns("plot_hide_legend"), "Hide legend", value = FALSE)
               )
-            )
-            ## ++ ##
+            ),
+            uiOutput(ns("analysis_plot_guidance"))
           ),
 
-          uiOutput(ns("analysis_plot_guidance")),
-
-          ## -- MEANS plot --------------------------------------------------
           card(
             full_screen  = TRUE,
             card_header("Means (per ha)"),
-            plotOutput(ns("analysis_plot_means"), height = "400px"),
-            br(),
-            downloadButton(ns("analysis_plot_means_download"), "Download means plot (PNG)")
+            div(
+              style = "width: fit-content; margin-bottom: 0.75rem;",
+              downloadButton(
+                ns("analysis_plot_means_download"),
+                "Download means plot (PNG)",
+                class = "btn-sm"
+              )
+            ),
+            plotOutput(ns("analysis_plot_means"), height = "400px")
           ),
 
-          ## -- TOTALS plot -------------------------------------------------
           card(
             full_screen  = TRUE,
             card_header("Totals"),
-            plotOutput(ns("analysis_plot_totals"), height = "400px"),
-            br(),
-            downloadButton(ns("analysis_plot_totals_download"), "Download totals plot (PNG)")
-          ),
-
-          ## ++ ##
-          card(
-            card_header("Export report"),
-            layout_column_wrap(
-              width = "220px",
-              fill  = FALSE,
-              selectInput(
-                ns("analysis_report_format"),
-                "Report format",
-                choices = c("HTML" = "html", "Word" = "docx"),
-                selected = "html"
+            div(
+              style = "width: fit-content; margin-bottom: 0.75rem;",
+              downloadButton(
+                ns("analysis_plot_totals_download"),
+                "Download totals plot (PNG)",
+                class = "btn-sm"
               )
             ),
-            downloadButton(ns("analysis_report_download"), "Download report")
+            plotOutput(ns("analysis_plot_totals"), height = "400px")
+          ),
+
+          card(
+            card_header("Export report"),
+            div(
+              style = "display: flex; gap: 0.75rem; align-items: end; flex-wrap: wrap;",
+              div(
+                style = "min-width: 220px;",
+                selectInput(
+                  ns("analysis_report_format"),
+                  "Report format",
+                  choices = c("Word" = "docx", "HTML" = "html"),
+                  selected = "docx"
+                )
+              ),
+              div(
+                style = "width: fit-content; margin-bottom: 0.5rem;",
+                downloadButton(
+                  ns("analysis_report_download"),
+                  "Download report",
+                  class = "btn-sm"
+                )
+              )
+            )
           )
           ## ++ ##
 
