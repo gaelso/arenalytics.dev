@@ -9,7 +9,6 @@ mod_tool_UI2 <- function(id, i18n, .tr){
   ns <- NS(id)
 
 
-
   ##
   ## UI Elements ######
   ##
@@ -123,7 +122,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
     ## Entity selector (populated after data loads)
     radioButtons(
       inputId = ns("analysis_mode"),
-      label   = "Analysis type",
+      label   = strong("Analysis type"),
       choices = c("Area" = "area", "Other measures" = "other"),
       selected = "other",
       inline = TRUE
@@ -143,7 +142,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
     ## Lonely-PSU strategy
     shinyWidgets::radioGroupButtons(
       inputId  = ns("analysis_lonely_psu"),
-      label    = "Lonely PSU handling",
+      label    = strong("Lonely PSU handling"),
       choices  = c("Adjust (conservative)" = "adjust",
                    "Remove (permissive)"   = "remove"),
       selected = "adjust",
@@ -154,7 +153,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
     ## ++ ##
     shinyWidgets::radioGroupButtons(
       inputId  = ns("analysis_compute_mode"),
-      label    = "Computation mode",
+      label    = strong("Computation mode"),
       choices  = c("Fast" = "fast",
                    "Safe" = "safe"),
       selected = "fast",
@@ -378,11 +377,14 @@ mod_tool_UI2 <- function(id, i18n, .tr){
             layout_column_wrap(
               width = "220px",
               fill  = FALSE,
-              selectInput(
-                ns("analysis_table_source"),
-                "Table source",
-                choices = c("Means (per ha)" = "MEANS", "Totals" = "TOTALS"),
-                selected = "MEANS"
+              div(
+                id = ns("analysis_table_source_wrap"),
+                selectInput(
+                  ns("analysis_table_source"),
+                  "Table source",
+                  choices = c("Means (per ha)" = "MEANS", "Totals" = "TOTALS"),
+                  selected = "MEANS"
+                )
               )
             ),
             div(
@@ -444,18 +446,21 @@ mod_tool_UI2 <- function(id, i18n, .tr){
             uiOutput(ns("analysis_plot_guidance"))
           ),
 
-          card(
-            full_screen  = TRUE,
-            card_header("Means (per ha)"),
-            div(
-              style = "width: fit-content; margin-bottom: 0.75rem;",
-              downloadButton(
-                ns("analysis_plot_means_download"),
-                "Download means plot (PNG)",
-                class = "btn-sm"
-              )
-            ),
-            plotOutput(ns("analysis_plot_means"), height = "400px")
+          div(
+            id = ns("analysis_means_card"),
+            card(
+              full_screen  = TRUE,
+              card_header("Means (per ha)"),
+              div(
+                style = "width: fit-content; margin-bottom: 0.75rem;",
+                downloadButton(
+                  ns("analysis_plot_means_download"),
+                  "Download means plot (PNG)",
+                  class = "btn-sm"
+                )
+              ),
+              plotOutput(ns("analysis_plot_means"), height = "400px")
+            )
           ),
 
           card(

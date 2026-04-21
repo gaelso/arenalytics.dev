@@ -150,7 +150,7 @@ mod_tool_server2 <- function(id, rv) {
       req(rv$insights$entities_named)
       selectInput(
         inputId  = ns("analysis_sel_entity"),
-        label    = "Entity",
+        label    = strong("Entity"),
         choices  = rv$insights$entities_named,
         multiple = FALSE
       )
@@ -189,7 +189,7 @@ mod_tool_server2 <- function(id, rv) {
       sub_choices <- make_grp(FALSE)
 
       tagList(
-        tags$label(class = "form-label", "Base-unit dimensions"),
+        tags$label(class = "form-label", strong("Base-unit dimensions")),
         shinyWidgets::checkboxGroupButtons(
           inputId    = ns("analysis_bu_dims"),
           label      = NULL,
@@ -199,7 +199,7 @@ mod_tool_server2 <- function(id, rv) {
         ),
         if (input$analysis_mode != "area" && length(sub_choices) > 0) tagList(
           hr(style = "margin: 0.5rem 0;"),
-          tags$label(class = "form-label", "Sub-unit dimensions"),
+          tags$label(class = "form-label", strong("Sub-unit dimensions")),
           shinyWidgets::checkboxGroupButtons(
             inputId    = ns("analysis_sub_dims"),
             label      = NULL,
@@ -384,6 +384,7 @@ mod_tool_server2 <- function(id, rv) {
         rv$analysis$result <- result
         rv$analysis$dims   <- dims_sel
         rv$analysis$entity <- input$analysis_sel_entity
+        rv$analysis$mode   <- input$analysis_mode
 
         shinyjs::enable("btn_analysis_results")
       }
@@ -395,6 +396,7 @@ mod_tool_server2 <- function(id, rv) {
       req(rv$analysis$result)
       shinyjs::hide("analysis_progress")
       shinyjs::hide("analysis_no_result")
+      sync_analysis_result_ui()
       shinyjs::show("analysis_results")
     })
     ## ++ ##
@@ -841,6 +843,107 @@ mod_tool_server2 <- function(id, rv) {
       stats::setNames(df, nice_names)
     }
 
+    analysis_result_mode <- function() {
+      rv$analysis$mode %||% "other"
+    }
+
+    survey_download_stub <- function() {
+      req(rv$inputs$data)
+      safe_file_stub(rv$inputs$data$chain_summary$surveyName %||% "survey")
+    }
+
+    analysis_download_name <- function(output_name, ext) {
+      paste0("AA-", survey_download_stub(), "-", output_name, ".", ext)
+    }
+
+    selected_measure_name <- function() {
+      req(rv$analysis$measures_meta)
+      input$analysis_sel_measure %||%
+        (rv$analysis$measures_meta |> dplyr::pull("name") |> dplyr::first())
+    }
+
+    selected_measure_label <- function() {
+      req(rv$analysis$measures_meta)
+      rv$analysis$measures_meta |>
+        dplyr::filter(.data$name == selected_measure_name()) |>
+        dplyr::pull("label") |>
+        dplyr::first()
+    }
+
+    selected_entity_label <- function() {
+      req(rv$insights$entities_named, rv$analysis$entity)
+      entity_idx <- which(unname(rv$insights$entities_named) == rv$analysis$entity)[1]
+      names(rv$insights$entities_named)[entity_idx] %||% rv$analysis$entity
+    }
+
+    selected_dim_labels <- function(baseunit = TRUE) {
+      req(rv$analysis$dim_meta, rv$analysis$dims)
+      rv$analysis$dim_meta |>
+        dplyr::filter(
+          .data$report_type == "dimension",
+          .data$name %in% rv$analysis$dims,
+          .data$dimension_baseunit == baseunit
+        ) |>
+        dplyr::pull("label")
+    }
+
+    active_filter_summary <- function() {
+      req(rv$analysis$result, rv$analysis$dim_meta, rv$analysis$dims)
+
+      purrr::compact(purrr::map(rv$analysis$dims, function(d) {
+        selected_vals <- input[[paste0("filter_dim__", d)]] %||% character(0)
+        all_vals <- sort(unique(rv$analysis$result$MEANS[[d]]))
+        if (length(selected_vals) == 0 || setequal(selected_vals, all_vals)) {
+          return(NULL)
+        }
+        dim_label <- rv$analysis$dim_meta |>
+          dplyr::filter(.data$name == d) |>
+          dplyr::pull("label") |>
+          dplyr::first()
+        paste0(dim_label, ": ", paste(selected_vals, collapse = ", "))
+      }))
+    }
+
+    report_summary_params <- function() {
+      req(rv$analysis$result, rv$inputs$data)
+
+      base_dims <- selected_dim_labels(TRUE)
+      sub_dims <- selected_dim_labels(FALSE)
+      active_filters <- active_filter_summary()
+
+      list(
+        survey_label = rv$inputs$data$chain_summary$surveyLabel %||% "Survey",
+        report_author = paste(
+          "Prepared with Arena Analytics",
+          "https://openforis-shiny.shinyapps.io/arenalytics/",
+          format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
+          sep = " | "
+        ),
+        analysis_entity = selected_entity_label(),
+        analysis_type = if (identical(analysis_result_mode(), "area")) "Area" else "Other measures",
+        base_unit_dimensions = if (length(base_dims) > 0) paste(base_dims, collapse = ", ") else "None",
+        sub_unit_dimensions = if (length(sub_dims) > 0) paste(sub_dims, collapse = ", ") else "None",
+        measure_label = selected_measure_label(),
+        filters_applied = if (length(active_filters) > 0) paste(active_filters, collapse = "; ") else "None",
+        table_title = if (identical(input$analysis_table_source, "TOTALS")) "Totals" else "Means (per ha)",
+        has_means_plot = !identical(analysis_result_mode(), "area")
+      )
+    }
+
+    sync_analysis_result_ui <- function() {
+      is_area <- identical(analysis_result_mode(), "area")
+
+      shinyjs::toggle("analysis_table_source_wrap", condition = !is_area)
+      shinyjs::toggle("analysis_means_card", condition = !is_area)
+
+      updateSelectInput(
+        session,
+        "analysis_table_source",
+        choices = if (is_area) c("Totals" = "TOTALS") else c("Means (per ha)" = "MEANS", "Totals" = "TOTALS"),
+        selected = if (is_area) "TOTALS" else (input$analysis_table_source %||% "MEANS")
+      )
+    }
+
     get_plot_validation <- function() {
       req(rv$analysis$dims, input$plot_dim)
 
@@ -897,6 +1000,11 @@ mod_tool_server2 <- function(id, rv) {
       shinyjs::toggleState("plot_facet", condition = n_dims >= 2)
     })
 
+    observeEvent(rv$analysis$mode, {
+      req(rv$analysis$mode)
+      sync_analysis_result_ui()
+    })
+
     ## ++ ##
     output$analysis_table <- DT::renderDT({
       req(rv$analysis$result, input$analysis_table_source, input$analysis_sel_measure)
@@ -951,7 +1059,7 @@ mod_tool_server2 <- function(id, rv) {
 
     output$analysis_table_download <- downloadHandler(
       filename = function() {
-        paste0("analysis_", tolower(input$analysis_table_source %||% "means"), ".csv")
+        analysis_download_name("full-table", "csv")
       },
       content = function(file) {
         utils::write.csv(
@@ -1067,8 +1175,8 @@ mod_tool_server2 <- function(id, rv) {
 
     safe_file_stub <- function(x) {
       x |>
-        stringr::str_replace_all("[^A-Za-z0-9]+", "_") |>
-        stringr::str_replace_all("^_+|_+$", "") |>
+        stringr::str_replace_all("[^A-Za-z0-9]+", "-") |>
+        stringr::str_replace_all("(^-+|-+$)", "") |>
         tolower()
     }
     ## ++ ##
@@ -1092,7 +1200,7 @@ mod_tool_server2 <- function(id, rv) {
     ## ++ ##
     output$analysis_plot_means_download <- downloadHandler(
       filename = function() {
-        paste0("means_plot_", safe_file_stub(input$analysis_sel_measure %||% "measure"), ".png")
+        analysis_download_name("fig-mean", "png")
       },
       content = function(file) {
         ggplot2::ggsave(
@@ -1107,7 +1215,7 @@ mod_tool_server2 <- function(id, rv) {
 
     output$analysis_plot_totals_download <- downloadHandler(
       filename = function() {
-        paste0("totals_plot_", safe_file_stub(input$analysis_sel_measure %||% "measure"), ".png")
+        analysis_download_name("fig-total", "png")
       },
       content = function(file) {
         ggplot2::ggsave(
@@ -1123,9 +1231,8 @@ mod_tool_server2 <- function(id, rv) {
     output$analysis_report_download <- downloadHandler(
       filename = function() {
         req(rv$inputs$data, input$analysis_report_format)
-        survey_stub <- safe_file_stub(rv$inputs$data$chain_summary$surveyLabel %||% "survey")
         ext <- if (identical(input$analysis_report_format, "docx")) "docx" else "html"
-        paste0("analysis_report_", survey_stub, ".", ext)
+        analysis_download_name("report", ext)
       },
       contentType = "application/octet-stream",
       content = function(file) {
@@ -1149,32 +1256,31 @@ mod_tool_server2 <- function(id, rv) {
           stop("Could not prepare the report template.", call. = FALSE)
         }
 
-        ggplot2::ggsave(means_plot_file, plot = build_analysis_plot("MEANS"), width = 10, height = 6, dpi = 300)
+        if (!identical(analysis_result_mode(), "area")) {
+          ggplot2::ggsave(means_plot_file, plot = build_analysis_plot("MEANS"), width = 10, height = 6, dpi = 300)
+        }
         ggplot2::ggsave(totals_plot_file, plot = build_analysis_plot("TOTALS"), width = 10, height = 6, dpi = 300)
-        utils::write.csv(analysis_report_table(), table_file, row.names = FALSE)
+        utils::write.csv(
+          analysis_report_table() |> label_analysis_table_columns(),
+          table_file,
+          row.names = FALSE
+        )
 
         rendered_file <- file.path(
           report_dir,
           paste0("analysis-report.", if (identical(input$analysis_report_format, "docx")) "docx" else "html")
         )
         rendered_name <- basename(rendered_file)
+        summary_params <- report_summary_params()
 
         quarto::quarto_render(
           input = qmd_file,
           output_format = input$analysis_report_format,
-          execute_params = list(
-            survey_title = paste(
-              rv$inputs$data$chain_summary$surveyName,
-              rv$inputs$data$chain_summary$surveyLabel,
-              sep = " - "
-            ),
-            analysis_entity = input$analysis_sel_entity,
-            analysis_type = if (identical(input$analysis_mode, "area")) "Area" else "Other measures",
-            table_title = if (identical(input$analysis_table_source, "TOTALS")) "Totals" else "Means (per ha)",
+          execute_params = c(summary_params, list(
             table_csv = table_file,
-            means_plot = means_plot_file,
+            means_plot = if (summary_params$has_means_plot) means_plot_file else "",
             totals_plot = totals_plot_file
-          ),
+          )),
           output_file = rendered_name,
           quiet = FALSE
         )

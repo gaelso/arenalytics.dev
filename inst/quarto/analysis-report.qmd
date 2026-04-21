@@ -1,47 +1,89 @@
 ---
-title: "`r params$survey_title`"
 format:
   html:
     embed-resources: true
     toc: false
-  docx: default
+    page-layout: full
+  docx:
+    toc: false
 params:
-  survey_title: "Survey"
+  survey_label: "Survey"
+  report_author: ""
   analysis_entity: ""
   analysis_type: ""
+  base_unit_dimensions: "None"
+  sub_unit_dimensions: "None"
+  measure_label: ""
+  filters_applied: "None"
   table_title: "Analysis table"
   table_csv: ""
   means_plot: ""
   totals_plot: ""
+  has_means_plot: true
 execute:
   echo: false
   warning: false
   message: false
 ---
 
+```{=openxml}
+<w:p>
+  <w:pPr>
+    <w:sectPr>
+      <w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>
+      <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="708" w:footer="708" w:gutter="0"/>
+    </w:sectPr>
+  </w:pPr>
+</w:p>
+```
+
 ```{r}
 table_df <- utils::read.csv(params$table_csv, check.names = FALSE)
+numeric_cols <- names(table_df)[vapply(table_df, is.numeric, logical(1))]
+if (length(numeric_cols) > 0) {
+  table_df[numeric_cols] <- lapply(table_df[numeric_cols], function(x) round(x, 2))
+}
 ```
+
+# `r params$survey_label`
+
+## Open Foris Arena results
+
+`r params$report_author`
 
 ## Analysis summary
 
 **Entity:** `r params$analysis_entity`  
-**Analysis type:** `r params$analysis_type`
+**Analysis type:** `r params$analysis_type`  
+**Base-unit dimensions:** `r params$base_unit_dimensions`  
+**Sub-unit dimensions:** `r params$sub_unit_dimensions`  
+**Measure selected:** `r params$measure_label`  
+**Filters applied:**  
+`r gsub("; ", "  \n", params$filters_applied)`
 
-## `r params$table_title`
+{{< pagebreak >}}
+
+## Figures
 
 ```{r}
-knitr::kable(table_df, format = "pipe")
+if (isTRUE(params$has_means_plot) && nzchar(params$means_plot)) {
+  knitr::include_graphics(params$means_plot)
+}
 ```
-
-## Means plot
-
-```{r}
-knitr::include_graphics(params$means_plot)
-```
-
-## Totals plot
 
 ```{r}
 knitr::include_graphics(params$totals_plot)
 ```
+:::
+:::
+
+{{< pagebreak >}}
+
+::: {.landscape}
+
+## Table
+
+```{r}
+knitr::kable(table_df, format = "pipe")
+```
+:::
