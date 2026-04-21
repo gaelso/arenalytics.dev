@@ -340,7 +340,7 @@ mod_tool_server2 <- function(id, rv) {
                 .zip    = rv$inputs$data,
                 .entity = input$analysis_sel_entity,
                 .dim    = dims_sel,
-                .cm     = "fast",
+                .cm     = input$analysis_compute_mode,
                 .lonely = input$analysis_lonely_psu,
                 .pb_ss  = session,
                 .pb_id  = "analysis_progress_bar"
@@ -636,7 +636,8 @@ mod_tool_server2 <- function(id, rv) {
     ## . + Shared plot builder (local helper) --------------------------------
     ## Called by both MEANS and TOTALS renderPlot to avoid duplication.
     make_bar_plot <- function(df, x_dim, measure, fill_col, facet_col,
-                              show_errbar, dim_meta, measures_meta,
+                              show_errbar, flip_coords, wrap_labels, hide_legend,
+                              dim_meta, measures_meta,
                               extra_filter_vals, comma_y = FALSE) {
 
       ## $$$
@@ -658,9 +659,17 @@ mod_tool_server2 <- function(id, rv) {
       get_lbl <- function(meta, col) {
         meta |> dplyr::filter(.data$name == col) |> dplyr::pull("label") |> dplyr::first()
       }
-      x_label    <- get_lbl(dim_meta,      x_dim)
-      y_label    <- get_lbl(measures_meta, measure)
-      fill_label <- if (use_fill)  get_lbl(dim_meta, fill_col)  else NULL
+      wrap_lab <- function(x, width = 20) {
+        if (isTRUE(wrap_labels)) {
+          stringr::str_wrap(as.character(x), width = width)
+        } else {
+          as.character(x)
+        }
+      }
+
+      x_label    <- wrap_lab(get_lbl(dim_meta,      x_dim), width = 28)
+      y_label    <- wrap_lab(get_lbl(measures_meta, measure), width = 28)
+      fill_label <- if (use_fill) wrap_lab(get_lbl(dim_meta, fill_col), width = 24) else NULL
 
       dodge   <- ggplot2::position_dodge(width = 0.9, preserve = "single")
       bar_pos <- if (use_fill) dodge else "identity"
@@ -675,7 +684,20 @@ mod_tool_server2 <- function(id, rv) {
         ggplot2::geom_col(position = bar_pos) +
         ggplot2::labs(x = x_label, y = y_label, fill = fill_label) +
         ggplot2::theme_minimal() +
-        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
+        ggplot2::theme(
+          axis.text.x = ggplot2::element_text(size = 12, angle = 45, hjust = 1),
+          axis.text.y = ggplot2::element_text(size = 12),
+          axis.title.x = ggplot2::element_text(size = 14, margin = ggplot2::margin(t = 10)),
+          axis.title.y = ggplot2::element_text(size = 14, margin = ggplot2::margin(r = 10)),
+          legend.title = ggplot2::element_text(size = 13),
+          legend.text = ggplot2::element_text(size = 11),
+          strip.text = ggplot2::element_text(size = 12, face = "bold")
+        ) +
+        ggplot2::scale_x_discrete(labels = \(x) wrap_lab(x, width = 18))
+
+      if (use_fill) {
+        p <- p + ggplot2::scale_fill_discrete(labels = \(x) wrap_lab(x, width = 18))
+      }
 
       if (show_errbar && has_ci) {
         p <- p + ggplot2::geom_errorbar(
@@ -688,8 +710,16 @@ mod_tool_server2 <- function(id, rv) {
       if (use_facet) {
         p <- p + ggplot2::facet_wrap(
           ggplot2::vars(!!rlang::sym(facet_col)),
-          labeller = ggplot2::label_value
+          labeller = ggplot2::labeller(.default = ggplot2::label_wrap_gen(width = 18))
         )
+      }
+
+      if (isTRUE(flip_coords)) {
+        p <- p + ggplot2::coord_flip()
+      }
+
+      if (isTRUE(hide_legend)) {
+        p <- p + ggplot2::theme(legend.position = "none")
       }
 
       ## $$$
@@ -848,12 +878,9 @@ mod_tool_server2 <- function(id, rv) {
         table_df,
         rownames = FALSE,
         filter = "top",
-        extensions = "Buttons",
         options = list(
           scrollX = TRUE,
-          pageLength = 10,
-          dom = "Bfrtip",
-          buttons = c("copy")
+          pageLength = 10
         )
       )
 
@@ -865,6 +892,31 @@ mod_tool_server2 <- function(id, rv) {
 
       table_out
     })
+
+    ## ++ ##
+    observeEvent(input$analysis_table_copy, {
+      req(rv$analysis$result, input$analysis_table_source)
+
+      table_df <- table_display_df(input$analysis_table_source)
+      txt <- paste(
+        c(
+          paste(names(table_df), collapse = "\t"),
+          purrr::map_chr(
+            seq_len(nrow(table_df)),
+            \(i) paste(as.character(table_df[i, , drop = TRUE]), collapse = "\t")
+          )
+        ),
+        collapse = "\n"
+      )
+
+      shinyjs::runjs(
+        sprintf(
+          "navigator.clipboard.writeText(%s);",
+          jsonlite::toJSON(txt, auto_unbox = TRUE)
+        )
+      )
+    })
+    ## ++ ##
 
     output$analysis_table_download <- downloadHandler(
       filename = function() {
@@ -963,6 +1015,9 @@ mod_tool_server2 <- function(id, rv) {
         fill_col          = input$plot_fill,
         facet_col         = input$plot_facet,
         show_errbar       = isTRUE(input$plot_errbar),
+        flip_coords       = isTRUE(input$plot_flip),
+        wrap_labels       = isTRUE(input$plot_wrap_labels),
+        hide_legend       = isTRUE(input$plot_hide_legend),
         dim_meta          = rv$analysis$dim_meta,
         measures_meta     = rv$analysis$measures_meta,
         ## $$$
@@ -983,6 +1038,9 @@ mod_tool_server2 <- function(id, rv) {
         fill_col          = input$plot_fill,
         facet_col         = input$plot_facet,
         show_errbar       = isTRUE(input$plot_errbar),
+        flip_coords       = isTRUE(input$plot_flip),
+        wrap_labels       = isTRUE(input$plot_wrap_labels),
+        hide_legend       = isTRUE(input$plot_hide_legend),
         dim_meta          = rv$analysis$dim_meta,
         measures_meta     = rv$analysis$measures_meta,
         ## $$$

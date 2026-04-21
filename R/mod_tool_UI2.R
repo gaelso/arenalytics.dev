@@ -151,6 +151,24 @@ mod_tool_UI2 <- function(id, i18n, .tr){
       justified = TRUE
     ),
 
+    ## ++ ##
+    shinyWidgets::radioGroupButtons(
+      inputId  = ns("analysis_compute_mode"),
+      label    = "Computation mode",
+      choices  = c("Fast" = "fast",
+                   "Safe" = "safe"),
+      selected = "fast",
+      size     = "xs",
+      justified = TRUE
+    ),
+    div(
+      class = "text-info",
+      style = "font-size: 0.85em; font-style: italic; margin-top: 0.25rem;",
+      bsicons::bs_icon("info-circle"),
+      " Fast computes all measures together. Safe is slower, but keeps going when some measures fail."
+    ),
+    ## ++ ##
+
     ## Run button
     div(
       style = "margin-top: 1rem;",
@@ -371,12 +389,21 @@ mod_tool_UI2 <- function(id, i18n, .tr){
                   `actions-box` = TRUE,
                   `selected-text-format` = "count > 3"
                 )
+              )
+            ),
+            ## ++ ##
+            div(
+              style = "display: flex; gap: 0.75rem; align-items: center; margin: 0.75rem 0;",
+              actionButton(
+                ns("analysis_table_copy"),
+                "Copy visible table"
               ),
               downloadButton(
                 ns("analysis_table_download"),
                 "Download full table (CSV)"
               )
             ),
+            ## ++ ##
             DT::DTOutput(ns("analysis_table"))
           ),
 
@@ -393,18 +420,34 @@ mod_tool_UI2 <- function(id, i18n, .tr){
               selectizeInput(ns("plot_fill"),  "Group by (fill)", choices = NULL,
                              options = list(placeholder = "-- none --", allowEmptyOption = TRUE)),
               selectizeInput(ns("plot_facet"), "Facet by",        choices = NULL,
-                             options = list(placeholder = "-- none --", allowEmptyOption = TRUE)),
-              ## $$$
-              ## $$$
-              ## class = "pt-4" reduced to pt-1
-              div(
-                class = "pt-1",
-                checkboxInput(ns("plot_errbar"), "Error bars", value = TRUE)
-              )
+                             options = list(placeholder = "-- none --", allowEmptyOption = TRUE))
               ## $$$
             ),
             ## -- Row 3: extra dimension filters (shown only when >3 dims used) --
-            uiOutput(ns("analysis_extra_filters"))
+            uiOutput(ns("analysis_extra_filters")),
+            ## ++ ##
+            hr(style = "margin: 0.9rem 0 0.75rem 0;"),
+            layout_column_wrap(
+              width = "180px",
+              fill  = FALSE,
+              div(
+                class = "pt-1",
+                checkboxInput(ns("plot_errbar"), "Error bars", value = TRUE)
+              ),
+              div(
+                class = "pt-1",
+                checkboxInput(ns("plot_flip"), "Flip coordinates", value = FALSE)
+              ),
+              div(
+                class = "pt-1",
+                checkboxInput(ns("plot_wrap_labels"), "Wrap labels", value = TRUE)
+              ),
+              div(
+                class = "pt-1",
+                checkboxInput(ns("plot_hide_legend"), "Hide legend", value = FALSE)
+              )
+            )
+            ## ++ ##
           ),
 
           uiOutput(ns("analysis_plot_guidance")),
