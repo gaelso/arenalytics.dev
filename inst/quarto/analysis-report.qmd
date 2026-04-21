@@ -26,16 +26,6 @@ execute:
   message: false
 ---
 
-```{=openxml}
-<w:p>
-  <w:pPr>
-    <w:sectPr>
-      <w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>
-      <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="708" w:footer="708" w:gutter="0"/>
-    </w:sectPr>
-  </w:pPr>
-</w:p>
-```
 
 ```{r}
 table_df <- utils::read.csv(params$table_csv, check.names = FALSE)
@@ -74,8 +64,6 @@ if (isTRUE(params$has_means_plot) && nzchar(params$means_plot)) {
 ```{r}
 knitr::include_graphics(params$totals_plot)
 ```
-:::
-:::
 
 {{< pagebreak >}}
 
