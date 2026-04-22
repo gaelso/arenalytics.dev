@@ -7,7 +7,7 @@
   ],
   "translation": [
     {
-      "en": "Analytical Dashboard for OpenForis Arena",
+      "en": "Analytical Dashboard for Open Foris Arena",
       "fr": "Mon tableau de bord",
       "sp": "Mi panel analítico"
     },
@@ -27,12 +27,12 @@
       "sp": "Acerca de"
     },
     {
-      "en": "Powerful analytics for your OpenForis Arena data",
+      "en": "Powerful analytics for your Open Foris Arena data",
       "fr": "Une façon plus intelligente d'explorer les données",
       "sp": "Una forma más inteligente de explorar datos"
     },
     {
-      "en": "Explore your data from OpenForis Arena, gain insights and develop report-ready figures and statistics.",
+      "en": "Explore your data from Open Foris Arena, gain insights and develop report-ready figures and statistics.",
       "fr": "Transformez des données complexes en informations claires grâce à une interface belle et intuitive.",
       "sp": "Transforma datos complejos en información clara con una interfaz hermosa e intuitiva."
     },
@@ -67,9 +67,9 @@
       "sp": "Arena Analytics está diseñado para funcionar con"
     },
     {
-      "en": "OpenForis Arena helps you create a survey, collect and clean data, and develop a processing chain for calculating additional variables from your data.",
-      "fr": "OpenForis Arena vous aide à créer une enquête, collecter et nettoyer les données, et développer une chaîne de traitement pour calculer des variables supplémentaires à partir de vos données.",
-      "sp": "OpenForis Arena le ayuda a crear una encuesta, recopilar y limpiar datos, y desarrollar una cadena de procesamiento para calcular variables adicionales a partir de sus datos."
+      "en": "Open Foris Arena helps you create a survey, collect and clean data, and develop a processing chain for calculating additional variables from your data.",
+      "fr": "Open Foris Arena vous aide à créer une enquête, collecter et nettoyer les données, et développer une chaîne de traitement pour calculer des variables supplémentaires à partir de vos données.",
+      "sp": "Open Foris Arena le ayuda a crear una encuesta, recopilar y limpiar datos, y desarrollar una cadena de procesamiento para calcular variables adicionales a partir de sus datos."
     },
     {
       "en": "The outcome of this process is a ZIP file of semi-aggregated data that will serve as input here.",
@@ -102,9 +102,9 @@
       "sp": "SP-Load ZIP file"
     },
     {
-      "en": "The dashboard requires a ZIP file that is produced by running the processing chain from your OpenForis Arena survey in Rstudio (local or online).",
-      "fr": "FR-The dashboard requires a ZIP file that is produced by running the processing chain from your OpenForis Arena survey in Rstudio (local or online).",
-      "sp": "SP-The dashboard requires a ZIP file that is produced by running the processing chain from your OpenForis Arena survey in Rstudio (local or online)."
+      "en": "The dashboard requires a ZIP file that is produced by running the processing chain from your Open Foris Arena survey in Rstudio (local or online).",
+      "fr": "FR-The dashboard requires a ZIP file that is produced by running the processing chain from your Open Foris Arena survey in Rstudio (local or online).",
+      "sp": "SP-The dashboard requires a ZIP file that is produced by running the processing chain from your Open Foris Arena survey in Rstudio (local or online)."
     },
     {
       "en": "Once this file is produced, upload here:",

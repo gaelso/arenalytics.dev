@@ -57,7 +57,7 @@ shiny_run_arenalytics_dev <- function(...) {
     )
   }
 
-  app_window_title <- "Arena Dashboard - OpenForis"
+  app_window_title <- "Arena Dashboard - Open Foris"
 
   ## App colors
   app_primary_color   <- "#4991B0"

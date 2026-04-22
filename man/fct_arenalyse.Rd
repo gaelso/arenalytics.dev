@@ -4,7 +4,15 @@
 \alias{fct_arenalyse}
 \title{Run survey estimation for a given entity and set of reporting dimensions}
 \usage{
-fct_arenalyse(.zip, .entity, .dim, .pb_ss = NULL, .pb_id = NULL)
+fct_arenalyse(
+  .zip,
+  .entity,
+  .dim,
+  .cm,
+  .lonely = "adjust",
+  .pb_ss = NULL,
+  .pb_id = NULL
+)
 }
 \arguments{
 \item{.zip}{Named list produced by \code{fct_readzip2()}. Must contain:
@@ -13,7 +21,7 @@ fct_arenalyse(.zip, .entity, .dim, .pb_ss = NULL, .pb_id = NULL)
 result variables, language, etc.).}
 \item{schema_summary}{Data dictionary describing all input dimensions.}
 \item{report_dimensions}{Available reporting dimensions.}
-\item{OLAP_\if{html}{\out{<entity>}}}{Wide-format OLAP table for the target entity.}
+\item{MAU_\if{html}{\out{<entity>}}}{Minimal Area Unit tables for the target entity.}
 }}
 
 \item{.entity}{Character scalar. Name of the entity to analyse (e.g.
@@ -21,6 +29,25 @@ result variables, language, etc.).}
 
 \item{.dim}{Character vector. Names of the reporting dimensions to include
 (e.g. \code{c("plot_forest_type", "plot_province")}).}
+
+\item{.cm}{Compute mode, One of \code{"fast"} or \code{"safe"}. \code{"fast"} computes all
+measures in a single survey summary call; \code{"safe"} computes each measure
+separately and keeps partial results when some measures fail.}
+
+\item{.lonely}{Lonely-PSU handling strategy. One of:
+\describe{
+\item{\code{"adjust"} (default)}{Substitutes the grand mean across strata for
+the single-PSU stratum's variance contribution, extended to domain
+(grouped) estimates via \code{survey.adjust.domain.lonely = TRUE}.
+Produces a conservative (upward-biased) but valid SE. Recommended when
+fine-grained cross-tabulations are expected.}
+\item{\code{"remove"}}{Drops the lone stratum from variance computation
+(\code{survey.adjust.domain.lonely = FALSE}). Faster and less
+conservative, but can silently underestimate SE for affected groups.
+May still error on domain estimates if the lonely PSU falls within a
+reporting group — safe only when base-unit dimensions are few and
+strata are well-populated.}
+}}
 
 \item{.pb_ss}{A Shiny session for \code{\link[shinyWidgets:progress-bar]{shinyWidgets::updateProgressBar()}}.
 Default \code{NULL}.}

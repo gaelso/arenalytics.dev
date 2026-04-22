@@ -9,21 +9,21 @@
 .tr_keys <- function() {
   list(
     ## main function
-    app_title = "Analytical Dashboard for OpenForis Arena",
+    app_title = "Analytical Dashboard for Open Foris Arena",
     nav_home  = "Home",
     nav_tool  = "Tool",
     nav_about = "About",
 
     ## Home UI
-    hero_title = "Powerful analytics for your OpenForis Arena data",
-    hero_txt = "Explore your data from OpenForis Arena, gain insights and develop report-ready figures and statistics.",
+    hero_title = "Powerful analytics for your Open Foris Arena data",
+    hero_txt = "Explore your data from Open Foris Arena, gain insights and develop report-ready figures and statistics.",
     hero_btn = "Get Started",
     feat1_p1 = "A dashboard shinyApp, arenalytics, shipped as a R package, unlocking the powerful statistics of R with the visual convenience of dashboards.",
     feat1_p2 = "For more details about the app developement or if any issue, find us on:",
     feat1_p3 = "Start playing with your data:",
     feat1_btn = "Here",
     feat2_p1 = "Arena Analytics is tailored to work with",
-    feat2_p2 = "OpenForis Arena helps you create a survey, collect and clean data, and develop a processing chain for calculating additional variables from your data.",
+    feat2_p2 = "Open Foris Arena helps you create a survey, collect and clean data, and develop a processing chain for calculating additional variables from your data.",
     feat2_p3 = "The outcome of this process is a ZIP file of semi-aggregated data that will serve as input here.",
     feat3_title = "Need help?",
     feat3_p1 = "Tutorials, examples and additional resources can help you harness the analytical power of Arena Analytics.",
@@ -33,7 +33,7 @@
 
     ## Tool UI
     ac1_title = "Load ZIP file",
-    ac1_p1 = "The dashboard requires a ZIP file that is produced by running the processing chain from your OpenForis Arena survey in Rstudio (local or online).",
+    ac1_p1 = "The dashboard requires a ZIP file that is produced by running the processing chain from your Open Foris Arena survey in Rstudio (local or online).",
     ac1_p2 = "Once this file is produced, upload here:",
     #ac1_input1 = "Browse...",
     #ac1_input2 = "No file selected",

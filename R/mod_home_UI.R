@@ -61,13 +61,13 @@ mod_home_UI <- function(id, i18n, .tr){
   card2 <- card(
     class = "feature-card shadow-sm",
     card_body(
-      h3("OpenForis Arena", style = "font-weight:700;"),
+      h3("Open Foris Arena", style = "font-weight:700;"),
       p(
       i18n$t(.tr$feat2_p1),
       tags$a(
         href = "https://www.openforis.org/arena/",
         target = "_blank",
-        span("OpenForis Arena", tags$img(src = "assets/logo-arena.png", height = "20px"), ".")
+        span("Open Foris Arena", tags$img(src = "assets/logo-arena.png", height = "20px"), ".")
         )
       ),
       p(i18n$t(.tr$feat2_p2)),
