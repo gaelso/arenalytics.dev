@@ -1249,6 +1249,13 @@ mod_tool_server2 <- function(id, rv) {
     )
 
     ## . + DL report ------
+    ## reactiveVal drives button enabled/disabled state — changing it from
+    ## on.exit() triggers a reactive flush so the WebSocket message is sent.
+    report_downloading <- reactiveVal(FALSE)
+    observeEvent(report_downloading(), {
+      shinyjs::toggleState("analysis_report_download", condition = !report_downloading())
+    }, ignoreInit = TRUE)
+
     output$analysis_report_download <- downloadHandler(
       filename = function() {
         req(rv$inputs$data, input$analysis_report_format)
@@ -1259,8 +1266,8 @@ mod_tool_server2 <- function(id, rv) {
       content = function(file) {
         req(rv$analysis$result, rv$inputs$data, input$analysis_report_format)
 
-        shinyjs::disable("analysis_report_download")
-        on.exit(shinyjs::enable("analysis_report_download"), add = TRUE)
+        report_downloading(TRUE)
+        on.exit(report_downloading(FALSE), add = TRUE)
 
         report_dir <- tempfile(pattern = "arenalytics-report-")
         dir.create(report_dir, recursive = TRUE, showWarnings = FALSE)
@@ -1320,6 +1327,20 @@ mod_tool_server2 <- function(id, rv) {
       }
     )
     ## ++ ##
+
+    ## . + Block report double-clicks via JS ------
+    ## shinyjs::disable() inside content() is too late — the WebSocket message
+    ## may not reach the browser until after the HTTP download response is sent.
+    ## This JS handler intercepts the click before the browser follows the href.
+    observe({
+      shinyjs::runjs(sprintf(
+        "$(document).on('click', '#%s', function(e) {
+          if ($(this).hasClass('disabled')) { e.preventDefault(); return false; }
+          $(this).addClass('disabled');
+        });",
+        ns("analysis_report_download")
+      ))
+    })
 
     ## $$$
 
