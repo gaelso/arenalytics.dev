@@ -26,7 +26,7 @@ recorded in \code{attr(result, ".errors")} as a named character vector
 (\verb{name = error message}).
 }
 \description{
-A fault-tolerant version of \code{\link[=fct_readzip]{fct_readzip()}}. Each file inside
+A fault-tolerant version Open Foris Arena ZIP reading function. Each file inside
 the ZIP is read inside a \code{\link[=tryCatch]{tryCatch()}} so that a single corrupted file does
 not abort the entire load. Files that fail to read are returned as \code{NULL}
 in the output list, and the error messages are attached to the result as

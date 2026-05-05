@@ -116,7 +116,7 @@ mod_tool_server2 <- function(id, rv) {
         entity_lang <- rv$inputs$data$schema_summary |>
           dplyr::as_tibble() |>
           dplyr::filter(.data$type == "entity") |>
-          dplyr::select(name, starts_with("label"))
+          dplyr::select("name", dplyr::starts_with("label"))
 
         rv$insights$entities_labs  <- utils_find_label(
           .df = entity_lang,
@@ -1023,7 +1023,7 @@ mod_tool_server2 <- function(id, rv) {
       } else {
         table_display_df(input$analysis_table_source) |>
           dplyr::select(
-            -base_unit_count, -item_count, dplyr::everything(), item_count, base_unit_count
+            -"base_unit_count", -"item_count", dplyr::everything(), "item_count", "base_unit_count"
           ) |>
           label_analysis_table_columns()
       }

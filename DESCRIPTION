@@ -16,7 +16,6 @@ Imports:
     ggplot2,
     htmltools,
     jsonlite,
-    knitr,
     purrr,
     quarto,
     rlang,

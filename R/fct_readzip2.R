@@ -1,6 +1,6 @@
 #' Read OpenForis Arena OLAP zipfile data (error-safe version)
 #'
-#' @description A fault-tolerant version of [fct_readzip()]. Each file inside
+#' @description A fault-tolerant version Open Foris Arena ZIP reading function. Each file inside
 #'   the ZIP is read inside a [tryCatch()] so that a single corrupted file does
 #'   not abort the entire load. Files that fail to read are returned as `NULL`
 #'   in the output list, and the error messages are attached to the result as

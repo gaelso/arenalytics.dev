@@ -8,6 +8,7 @@ fct_arenalyse(
   .zip,
   .entity,
   .dim,
+  .pvalue = 0.95,
   .cm,
   .lonely = "adjust",
   .pb_ss = NULL,
@@ -29,6 +30,8 @@ result variables, language, etc.).}
 
 \item{.dim}{Character vector. Names of the reporting dimensions to include
 (e.g. \code{c("plot_forest_type", "plot_province")}).}
+
+\item{.pvalue}{P-value for the standard error estimation.}
 
 \item{.cm}{Compute mode, One of \code{"fast"} or \code{"safe"}. \code{"fast"} computes all
 measures in a single survey summary call; \code{"safe"} computes each measure
