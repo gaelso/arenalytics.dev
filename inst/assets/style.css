@@ -13,6 +13,15 @@
   z-index: 10000 !important;
 }
 
+/* Allow p-value confidence level dropdown to overflow accordion border */
+.accordion-item:has(.pvalue-select-wrap),
+.accordion-body:has(.pvalue-select-wrap) {
+  overflow: visible !important;
+}
+.pvalue-select-wrap .selectize-dropdown {
+  z-index: 10000 !important;
+}
+
 /* Smooth scrolling  */
 html, body {
   height: 100%;

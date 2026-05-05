@@ -9,11 +9,19 @@ format:
 params:
   survey_label: "Survey"
   report_author: ""
+  survey_code: ""
+  cycle_number: ""
+  sampling_strategy: ""
+  stratification_attribute: ""
+  clustering: ""
+  clustering_attribute: ""
+  nonresponse_correction: "Unknown"
   analysis_entity: ""
   analysis_type: ""
   base_unit_dimensions: "None"
   sub_unit_dimensions: "None"
   measure_label: ""
+  confidence_level: "0.95"
   filters_applied: "None"
   table_title: "Analysis table"
   table_csv: ""
@@ -41,14 +49,27 @@ if (length(numeric_cols) > 0) {
 
 `r params$report_author`
 
+## Survey highlights
+
+**Survey code:** `r params$survey_code`  
+**Cycle number:** `r params$cycle_number`  
+**Sampling strategy code:** `r params$sampling_strategy`   
+**Stratification attribute:** `r params$stratification_attribute`  
+**Clustering:** `r params$clustering`  
+**Clustering attribute:** `r params$clustering_attribute`  
+**Non-response bias correction:** `r params$nonresponse_correction`  
+
+---
+
 ## Analysis summary
 
-**Entity:** `r params$analysis_entity`  
+`r if (!identical(params$analysis_type, "Area")) paste0("**Entity:** ", params$analysis_entity, "  ")`  
 **Analysis type:** `r params$analysis_type`  
 **Base-unit dimensions:** `r params$base_unit_dimensions`  
-**Sub-unit dimensions:** `r params$sub_unit_dimensions`  
-**Measure selected:** `r params$measure_label`  
-**Filters applied:**  
+`r if (!identical(params$analysis_type, "Area")) paste0("**Sub-unit dimensions:** ", params$sub_unit_dimensions, " ")`  
+`r if (!identical(params$analysis_type, "Area")) paste0("**Measure selected:** ", params$measure_label, "  ")`  
+**Confidence level:** `r params$confidence_level`  
+**Filters applied:**
 `r gsub("; ", "  \n", params$filters_applied)`
 
 {{< pagebreak >}}

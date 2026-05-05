@@ -107,9 +107,9 @@
       "sp": "SP-The dashboard requires a ZIP file that is produced by running the processing chain from your Open Foris Arena survey in Rstudio (local or online)."
     },
     {
-      "en": "Once this file is produced, upload here:",
-      "fr": "FR-Once this file is produced, upload here:",
-      "sp": "SP-Once this file is produced, upload here:"
+      "en": "Once this file is produced, upload it here:",
+      "fr": "FR-Once this file is produced, upload it here:",
+      "sp": "SP-Once this file is produced, upload it here:"
     },
     {
       "en": "Browse...",

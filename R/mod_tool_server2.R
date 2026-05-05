@@ -12,30 +12,8 @@ mod_tool_server2 <- function(id, rv) {
     ## Backward compatibility prefix of entity tables in the ZIP file
     .ep <- "MAU_"
 
-    ## !!! FOR TESTING ONLY
-    # rv <- list()
-    # rv$inputs <- list()
-    # # rv$inputs$path_zip <- system.file("extdata/OLAP_Shiny_demo.zip", package = "arenalytics")
-    # rv$inputs$path_zip <- "data-raw/MAU_Shiny_(png_nfi_2024_upperplant) 1.zip"
-    # rv$inputs$check_zip <- fct_checkzip(.path = rv$inputs$path_zip, .entity_prefix = .ep)
-    # rv$inputs      <- fct_readzip2(.path = rv$inputs$path_zip, .entity_prefix = .ep)
-    # input <- list()
-    # input$analysis_sel_entity <- "tree"
-    # input$analysis_sel_dims <- c("cluster_forest_type", "dbh_up100_10cm")
-    # result <- fct_arenalyse(
-    #   .zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = input$analysis_sel_dims,
-    #   .cm = "fast", .lonely = "remove"
-    # )
-    # rv$insights <- list()
-    # dims_sel <- c("cluster_forest_type", "stratum_calc")
-    # result <- fct_arenalyse(
-    #   .zip = rv$inputs$data, .entity = input$analysis_sel_entity, .dim = dims_sel,
-    #   .cm = "fast", .lonely = "remove"
-    #   )
-    ## !!!
-
-
-
+    ## !!! FOR TESTING: see tests/test-tool-server.R
+    
     ##
     ## Accordions outputs and events ######
     ##
@@ -68,6 +46,9 @@ mod_tool_server2 <- function(id, rv) {
 
       session$sendCustomMessage("activate-tab", list(id = ns("tool_tabs"), value = "tab_insights"))
       session$sendCustomMessage("scroll_top", list())
+
+      ## Disable Read data button (second clcik triggers error message)
+      shinyjs::disable("btn_read_data")
 
       ## Hide/Show panels
       shinyjs::hide("panel_insight_msg")
@@ -120,30 +101,37 @@ mod_tool_server2 <- function(id, rv) {
       shinyjs::show("panel_insights")
     })
 
-    ## + Entities observer — shared by Insights panel and Acc3 ======
+    ## + Acc3: Run analysis ======
+
+    ## . + Entities observer — shared by Insights panel and Acc3 ------
     observe({
       req(rv$inputs$data)
 
       if (length(names(rv$inputs$data)) > 0) {
-        ## Convention entities = 'tree' etc., entities_labs = 'Tree', fetch entity data -> 'MAU_tree'
-        rv$insights$entities       <- names(rv$inputs$data) |> stringr::str_subset(.ep) |> stringr::str_remove(.ep)
-        rv$insights$entities_labs  <- fct_find_label(
-          .df = rv$inputs$data$schema_summary |>
-            tibble::as_tibble() |>
-            dplyr::filter(.data$type == "entity"),
+        ## Convention entities = 'tree' etc., entities_labs = 'Tree'
+        rv$insights$entities  <- names(rv$inputs$data) |>
+          stringr::str_subset(.ep) |>
+          stringr::str_remove(.ep)
+
+        entity_lang <- rv$inputs$data$schema_summary |>
+          dplyr::as_tibble() |>
+          dplyr::filter(.data$type == "entity") |>
+          dplyr::select(name, starts_with("label"))
+
+        rv$insights$entities_labs  <- utils_find_label(
+          .df = entity_lang,
           .name = rv$insights$entities,
           .lang = rv$inputs$data$chain_summary$selectedLanguage
         )
-        rv$insights$entities_named <- stats::setNames(rv$insights$entities, rv$insights$entities_labs)
+        rv$insights$entities_named <- stats::setNames(
+          # c("area", rv$insights$entities), c("Area", rv$insights$entities_labs)
+          rv$insights$entities, rv$insights$entities_labs
+        )
 
       } else {
         rv$insights$entities_named <- NULL
       }
     })
-
-    ## + Acc3: Run analysis ======
-
-    ## $$$
 
     ## . + Entity selector — reuses entity list built by Acc2 observer ------
     output$analysis_entity <- renderUI({
@@ -177,16 +165,8 @@ mod_tool_server2 <- function(id, rv) {
     output$analysis_dims <- renderUI({
       req(rv$analysis$dim_meta, input$analysis_mode)
 
-      make_grp <- function(is_bu) {
-        sub <- rv$analysis$dim_meta |>
-          dplyr::filter(.data$report_type == "dimension",
-                        .data$dimension_baseunit == is_bu)
-        if (nrow(sub) == 0) return(character(0))
-        stats::setNames(sub$name, sub$label)
-      }
-
-      bu_choices  <- make_grp(TRUE)
-      sub_choices <- make_grp(FALSE)
+      bu_choices  <- utils_make_grp(.rv = rv, .is_bu = TRUE)
+      sub_choices <- utils_make_grp(.rv = rv, .is_bu = FALSE)
 
       tagList(
         tags$label(class = "form-label", strong("Base-unit dimensions")),
@@ -242,7 +222,7 @@ mod_tool_server2 <- function(id, rv) {
 
     ## . + Enable run button when at least one dim is selected ------
     observe({
-      dims_sel <- if (identical(input$analysis_mode, "area")) {
+      rv$analysis$dims_sel <- if (identical(input$analysis_mode, "area")) {
         input$analysis_bu_dims
       } else {
         c(input$analysis_bu_dims, input$analysis_sub_dims)
@@ -250,35 +230,23 @@ mod_tool_server2 <- function(id, rv) {
 
       shinyjs::toggleState(
         id        = "btn_run_analysis",
-        condition = isTruthy(dims_sel)
+        condition = isTruthy(rv$analysis$dims_sel)
       )
     })
 
-    ## ++ ##
     ## . + Run fct_arenalyse() ------
     observeEvent(input$btn_run_analysis, {
-      dims_sel <- if (identical(input$analysis_mode, "area")) {
-        input$analysis_bu_dims
-      } else {
-        c(input$analysis_bu_dims, input$analysis_sub_dims)
-      }
-      req(rv$inputs$data, input$analysis_sel_entity, dims_sel)
+      # dims_sel <- if (identical(input$analysis_mode, "area")) {
+      #   input$analysis_bu_dims
+      # } else {
+      #   c(input$analysis_bu_dims, input$analysis_sub_dims)
+      # }
+      # req(rv$inputs$data, input$analysis_sel_entity, dims_sel)
+      req(rv$inputs$data, input$analysis_sel_entity, rv$analysis$dims_sel)
 
       session$sendCustomMessage("activate-tab", list(id = ns("tool_tabs"), value = "tab_analysis"))
       session$sendCustomMessage("scroll_top", list())
 
-
-      ## Replaced with meta generated from readzip2()
-      ## Store measure metadata for plot selectors
-      # rv$analysis$measures_meta <- tibble::as_tibble(
-      #   rv$inputs$data$chain_summary$resultVariables
-      # ) |>
-      #   dplyr::filter(
-      #     .data$entity == entity,
-      #     .data$areaBased,
-      #     .data$active,
-      #     .data$type == "Q"
-      #   )
 
       ## Measures info for plot selector
       if (identical(input$analysis_mode, "area")) {
@@ -320,7 +288,7 @@ mod_tool_server2 <- function(id, rv) {
               area_result <- build_area_result(
                 .zip = rv$inputs$data,
                 .entity = input$analysis_sel_entity,
-                .dim = dims_sel,
+                .dim = rv$analysis$dims_sel,
                 .entity_prefix = .ep
               )
 
@@ -339,7 +307,8 @@ mod_tool_server2 <- function(id, rv) {
               fct_arenalyse(
                 .zip    = rv$inputs$data,
                 .entity = input$analysis_sel_entity,
-                .dim    = dims_sel,
+                .dim    = rv$analysis$dims_sel,
+                .pvalue = as.numeric(input$analysis_p_value),
                 .cm     = input$analysis_compute_mode,
                 .lonely = input$analysis_lonely_psu,
                 .pb_ss  = session,
@@ -369,7 +338,8 @@ mod_tool_server2 <- function(id, rv) {
       shinyjs::enable("btn_run_analysis")
 
       if (!is.null(result)) {
-        lang <- rv$inputs$data$chain_summary$selectedLanguage %||% "en"
+        # lang <- rv$inputs$data$chain_summary$selectedLanguage %||% "en"
+        lang <- rv$inputs$data$chain_summary$selectedLanguage
         dim_meta  <- rv$analysis$dim_meta
         cats      <- rv$inputs$data$categories
 
@@ -382,16 +352,14 @@ mod_tool_server2 <- function(id, rv) {
         }
 
         rv$analysis$result <- result
-        rv$analysis$dims   <- dims_sel
+        rv$analysis$dims   <- rv$analysis$dims_sel
         rv$analysis$entity <- input$analysis_sel_entity
         rv$analysis$mode   <- input$analysis_mode
 
         shinyjs::enable("btn_analysis_results")
       }
     })
-    ## ++ ##
 
-    ## ++ ##
     observeEvent(input$btn_analysis_results, {
       req(rv$analysis$result)
       shinyjs::hide("analysis_progress")
@@ -399,9 +367,6 @@ mod_tool_server2 <- function(id, rv) {
       sync_analysis_result_ui()
       shinyjs::show("analysis_results")
     })
-    ## ++ ##
-
-    ## $$$
 
 
     ##
@@ -413,10 +378,36 @@ mod_tool_server2 <- function(id, rv) {
     ## . + Survey title ------
     output$insight_title <- renderText({
       req(rv$inputs$data)
-      paste(
-        rv$inputs$data$chain_summary$surveyName,
-        rv$inputs$data$chain_summary$surveyLabel,
-        sep = " - "
+      rv$inputs$data$chain_summary$surveyLabel
+    })
+
+    ## . + Chain summary info block ------
+    output$insight_chain_info <- renderUI({
+      req(rv$inputs$data)
+      ch <- rv$inputs$data$chain_summary
+
+      info_row <- function(label, value) {
+        tags$p(
+          style = "margin: 0.15rem 0;",
+          tags$strong(paste0(label, ": ")), value
+        )
+      }
+
+      is_clustered  <- nzchar(ch$clusteringEntity %||% "")
+      cluster_attr  <- if (is_clustered) {
+        paste(ch$clusteringEntityKeys %||% "-", collapse = ", ")
+      } else {
+        "-"
+      }
+
+      tags$div(
+        info_row("Survey code",                    ch$surveyName %||% "-"),
+        info_row("Cycle number",                   ch$selectedCycle %||% "-"),
+        info_row("Sampling strategy code",         ch$samplingStrategy %||% "-"),
+        info_row("Stratification attribute",       ch$stratumAttribute %||% "-"),
+        info_row("Clustering",                     if (is_clustered) "Yes" else "No"),
+        info_row("Clustering attribute",           cluster_attr),
+        info_row("Non-response bias correction",   "Unknown")
       )
     })
 
@@ -560,7 +551,7 @@ mod_tool_server2 <- function(id, rv) {
       selection_text <- if (length(selected_dims) == 0) "No dimensions selected." else paste(selected_dims, collapse = ", ")
 
       tags$div(
-        tags$p(
+        if (!identical(input$analysis_mode, "area")) tags$p(
           tags$strong("Entity: "),
           input$analysis_sel_entity
         ),
@@ -682,8 +673,14 @@ mod_tool_server2 <- function(id, rv) {
         ggplot2::aes(x = .data[[x_dim]], y = .data[[measure]])
       }
 
+      geom_col_layer <- if (use_fill) {
+        ggplot2::geom_col(position = bar_pos, col = "grey30")
+      } else {
+        ggplot2::geom_col(position = bar_pos, col = "grey30", fill = "grey70")
+      }
+
       p <- ggplot2::ggplot(df, base_aes) +
-        ggplot2::geom_col(position = bar_pos) +
+        geom_col_layer +
         ggplot2::labs(x = x_label, y = y_label, fill = fill_label) +
         ggplot2::theme_minimal() +
         ggplot2::theme(
@@ -705,7 +702,8 @@ mod_tool_server2 <- function(id, rv) {
         p <- p + ggplot2::geom_errorbar(
           ggplot2::aes(ymin = .data[[low_col]], ymax = .data[[upp_col]]),
           position = bar_pos,
-          width    = 0.2
+          width    = 0.2,
+          col = "black"
         )
       }
 
@@ -908,25 +906,35 @@ mod_tool_server2 <- function(id, rv) {
       req(rv$analysis$result, rv$inputs$data)
 
       base_dims <- selected_dim_labels(TRUE)
-      sub_dims <- selected_dim_labels(FALSE)
+      sub_dims  <- selected_dim_labels(FALSE)
       active_filters <- active_filter_summary()
+      ch <- rv$inputs$data$chain_summary
+      is_clustered <- nzchar(ch$clusteringEntity %||% "")
 
       list(
-        survey_label = rv$inputs$data$chain_summary$surveyLabel %||% "Survey",
-        report_author = paste(
+        survey_label              = ch$surveyLabel %||% "Survey",
+        report_author             = paste(
           "Prepared with Arena Analytics",
           "https://openforis-shiny.shinyapps.io/arenalytics/",
           format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
           sep = " | "
         ),
-        analysis_entity = selected_entity_label(),
-        analysis_type = if (identical(analysis_result_mode(), "area")) "Area" else "Other measures",
-        base_unit_dimensions = if (length(base_dims) > 0) paste(base_dims, collapse = ", ") else "None",
-        sub_unit_dimensions = if (length(sub_dims) > 0) paste(sub_dims, collapse = ", ") else "None",
-        measure_label = selected_measure_label(),
-        filters_applied = if (length(active_filters) > 0) paste(active_filters, collapse = "; ") else "None",
-        table_title = if (identical(input$analysis_table_source, "TOTALS")) "Totals" else "Means (per ha)",
-        has_means_plot = !identical(analysis_result_mode(), "area")
+        survey_code               = ch$surveyName %||% "-",
+        cycle_number              = as.character(ch$selectedCycle %||% "-"),
+        sampling_strategy         = as.character(ch$samplingStrategy %||% "-"),
+        stratification_attribute  = ch$stratumAttribute %||% "-",
+        clustering                = if (is_clustered) "Yes" else "No",
+        clustering_attribute      = if (is_clustered) paste(ch$clusteringEntityKeys %||% "-", collapse = ", ") else "-",
+        nonresponse_correction    = "Unknown",
+        analysis_entity           = selected_entity_label(),
+        analysis_type             = if (identical(analysis_result_mode(), "area")) "Area" else "Other measures",
+        base_unit_dimensions      = if (length(base_dims) > 0) paste(base_dims, collapse = ", ") else "None",
+        sub_unit_dimensions       = if (length(sub_dims) > 0) paste(sub_dims, collapse = ", ") else "None",
+        measure_label             = selected_measure_label(),
+        confidence_level          = as.character(input$analysis_p_value %||% "0.95"),
+        filters_applied           = if (length(active_filters) > 0) paste(active_filters, collapse = "; ") else "None",
+        table_title               = if (identical(input$analysis_table_source, "TOTALS")) "Totals" else "Means (per ha)",
+        has_means_plot            = !identical(analysis_result_mode(), "area")
       )
     }
 
@@ -1005,12 +1013,20 @@ mod_tool_server2 <- function(id, rv) {
       sync_analysis_result_ui()
     })
 
-    ## ++ ##
+    ## . + Make output table ------
     output$analysis_table <- DT::renderDT({
       req(rv$analysis$result, input$analysis_table_source, input$analysis_sel_measure)
 
-      table_df <- table_display_df(input$analysis_table_source) |>
-        label_analysis_table_columns()
+      table_df <- if (identical(input$analysis_sel_measure, "area")) {
+        table_display_df(input$analysis_table_source) |>
+          label_analysis_table_columns()
+      } else {
+        table_display_df(input$analysis_table_source) |>
+          dplyr::select(
+            -base_unit_count, -item_count, dplyr::everything(), item_count, base_unit_count
+          ) |>
+          label_analysis_table_columns()
+      }
 
       table_out <- DT::datatable(
         table_df,
@@ -1023,9 +1039,14 @@ mod_tool_server2 <- function(id, rv) {
       )
 
       numeric_cols <- names(table_df)[purrr::map_lgl(table_df, is.numeric)]
+      count_cols   <- numeric_cols[endsWith(numeric_cols, "count")]
+      measure_cols <- setdiff(numeric_cols, count_cols)
 
-      if (length(numeric_cols) > 0) {
-        table_out <- DT::formatRound(table_out, columns = numeric_cols, digits = 2, mark = ",")
+      if (length(measure_cols) > 0) {
+        table_out <- DT::formatRound(table_out, columns = measure_cols, digits = 3, mark = ",")
+      }
+      if (length(count_cols) > 0) {
+        table_out <- DT::formatRound(table_out, columns = count_cols, digits = 0, mark = ",")
       }
 
       table_out
@@ -1189,15 +1210,6 @@ mod_tool_server2 <- function(id, rv) {
       build_analysis_plot("MEANS")
     })
 
-    ## . + TOTALS bar plot ---------------------------------------------------
-    output$analysis_plot_totals <- renderPlot({
-      req(rv$analysis$result, input$plot_dim, input$analysis_sel_measure)
-      validation <- get_plot_validation()
-      validate(need(validation$ok, validation$message))
-      build_analysis_plot("TOTALS")
-    })
-
-    ## ++ ##
     output$analysis_plot_means_download <- downloadHandler(
       filename = function() {
         analysis_download_name("fig-mean", "png")
@@ -1212,6 +1224,14 @@ mod_tool_server2 <- function(id, rv) {
         )
       }
     )
+
+    ## . + TOTALS bar plot ---------------------------------------------------
+    output$analysis_plot_totals <- renderPlot({
+      req(rv$analysis$result, input$plot_dim, input$analysis_sel_measure)
+      validation <- get_plot_validation()
+      validate(need(validation$ok, validation$message))
+      build_analysis_plot("TOTALS")
+    })
 
     output$analysis_plot_totals_download <- downloadHandler(
       filename = function() {
@@ -1228,6 +1248,7 @@ mod_tool_server2 <- function(id, rv) {
       }
     )
 
+    ## . + DL report ------
     output$analysis_report_download <- downloadHandler(
       filename = function() {
         req(rv$inputs$data, input$analysis_report_format)
@@ -1237,6 +1258,9 @@ mod_tool_server2 <- function(id, rv) {
       contentType = "application/octet-stream",
       content = function(file) {
         req(rv$analysis$result, rv$inputs$data, input$analysis_report_format)
+
+        shinyjs::disable("analysis_report_download")
+        on.exit(shinyjs::enable("analysis_report_download"), add = TRUE)
 
         report_dir <- tempfile(pattern = "arenalytics-report-")
         dir.create(report_dir, recursive = TRUE, showWarnings = FALSE)

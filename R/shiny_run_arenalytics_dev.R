@@ -97,9 +97,10 @@ shiny_run_arenalytics_dev <- function(...) {
   app_footer <- div(
     class = "container footer text-center",
     tags$small(
-      "(c) 2026 MyApp - Developed by ",
-      tags$strong("Your Name"),
-      " - With the support of XYZ Institute"
+      "(c) 2026 Arenalytics v1.0.0 - Developed by ",
+      tags$strong("Arenalytics Team"),
+      " - With the support of the ", 
+      tags$a("AIM4Forests programme", href = "https://www.fao.org/in-action/aim4forests/en", target = "_blank")
     )
   )
 
@@ -184,7 +185,7 @@ shiny_run_arenalytics_dev <- function(...) {
       nav_item(language_selector)
 
     ) #|> ## End page_navbar
-      ## Make navbar larger before switch to menu button
+      ## Make navbar larger before switched to menu button
       #shiny::tagAppendAttributes(.cssSelector = "nav", class = "navbar-expand-md")
 
   ) ## End tagList
@@ -202,11 +203,9 @@ shiny_run_arenalytics_dev <- function(...) {
     rv <- reactiveValues(
       inputs   = reactiveValues(),
       insights = reactiveValues(),
-      ct       = reactiveValues(),
-      actions  = reactiveValues(),
-      ## $$$
-      analysis = reactiveValues()
-      ## $$$
+      # ct       = reactiveValues(),
+      analysis = reactiveValues(),
+      actions  = reactiveValues()
     )
 
     ## NOT USED - Save language value to show/hide entire divs with shinyjs rather than long i18n translators

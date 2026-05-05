@@ -168,6 +168,17 @@ mod_tool_UI2 <- function(id, i18n, .tr){
     ),
     ## ++ ##
 
+    ## Confidence level
+    div(
+      class = "pvalue-select-wrap",
+      selectInput(
+        inputId  = ns("analysis_p_value"),
+        label    = strong("Confidence level"),
+        choices  = c("0.99", "0.95", "0.90", "0.80", "0.68"),
+        selected = "0.95"
+      )
+    ),
+
     ## Run button
     div(
       style = "margin-top: 1rem;",
@@ -217,9 +228,10 @@ mod_tool_UI2 <- function(id, i18n, .tr){
   ))
 
   ## . . + Data insights -----
-  insight_p_title <- tags$h5(
-    tags$span("Survey name: ", style = "font-weight:700;"),
-    textOutput(ns("insight_title"), inline = TRUE)
+  insight_p_title <- tagList(
+    tags$h5(textOutput(ns("insight_title"), inline = TRUE)),
+    hr(),
+    uiOutput(ns("insight_chain_info"))
   )
 
   ## $$$
@@ -294,15 +306,13 @@ mod_tool_UI2 <- function(id, i18n, .tr){
         shinyjs::hidden(div(
           id = ns("panel_insights"),
           tags$h3("Data insights"),
-          ## $$$
           insight_p_title,
-          br(),
+          hr(),
           uiOutput(ns("insight_current_selection")),
           hr(),
           insight_row_bu,
           insight_row_sub,
           insight_row_meas
-          ## $$$
         ))
       ),
 
@@ -373,6 +383,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
           ),
 
           card(
+            full_screen = TRUE,
             card_header("Results table"),
             layout_column_wrap(
               width = "220px",
@@ -432,7 +443,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
               ),
               div(
                 class = "pt-1",
-                checkboxInput(ns("plot_flip"), "Flip coordinates", value = FALSE)
+                checkboxInput(ns("plot_flip"), "Swap axis", value = FALSE)
               ),
               div(
                 class = "pt-1",

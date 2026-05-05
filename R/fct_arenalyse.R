@@ -17,6 +17,7 @@
 #'   \code{"tree"}, \code{"plot"}).
 #' @param .dim Character vector. Names of the reporting dimensions to include
 #'   (e.g. \code{c("plot_forest_type", "plot_province")}).
+#' @param .pvalue P-value for the standard error estimation.
 #' @param .cm Compute mode, One of `"fast"` or `"safe"`. `"fast"` computes all
 #'   measures in a single survey summary call; `"safe"` computes each measure
 #'   separately and keeps partial results when some measures fail.
@@ -52,7 +53,7 @@
 #' @importFrom rlang .data
 #'
 #' @export
-fct_arenalyse <- function(.zip, .entity, .dim, .cm, .lonely = "adjust", .pb_ss = NULL, .pb_id = NULL) {
+fct_arenalyse <- function(.zip, .entity, .dim, .pvalue = 0.95, .cm, .lonely = "adjust", .pb_ss = NULL, .pb_id = NULL) {
 
   ## !!! FOR TESTING ONLY
   # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip")$data
@@ -88,11 +89,8 @@ fct_arenalyse <- function(.zip, .entity, .dim, .cm, .lonely = "adjust", .pb_ss =
   .zip$report_dimensions <- tibble::as_tibble(.zip$report_dimensions)
 
   chain          <- .zip$chain_summary
-  # label_language <- paste0("label_", chain$selectedLanguage)
-  # clevel         <- chain$analysis$pValue
-
   entity_tblname <- stringr::str_subset(names(.zip), .entity)
-  entity_prefix <- stringr::str_remove(entity_tblname, .entity)
+  entity_prefix  <- stringr::str_remove(entity_tblname, .entity)
 
   ## Get entity data
   wt <- .zip[[entity_tblname]] |> tibble::as_tibble()
@@ -360,7 +358,7 @@ fct_arenalyse <- function(.zip, .entity, .dim, .cm, .lonely = "adjust", .pb_ss =
               .cols = dplyr::any_of(measures),
               .fns  = list(~srvyr::survey_mean(
                 .x, na.rm = FALSE, vartype = c("se", "ci"),
-                proportion = FALSE, level = chain$analysis$pValue, df = Inf
+                proportion = FALSE, level = .pvalue, df = Inf
               ))
             )
           ) |>
@@ -414,7 +412,7 @@ fct_arenalyse <- function(.zip, .entity, .dim, .cm, .lonely = "adjust", .pb_ss =
                   .cols = dplyr::any_of(m),
                   .fns  = list(~srvyr::survey_mean(
                     .x, na.rm = FALSE, vartype = c("se", "ci"),
-                    proportion = FALSE, level = chain$analysis$pValue, df = Inf
+                    proportion = FALSE, level = .pvalue, df = Inf
                   ))
                 )
               ) |>

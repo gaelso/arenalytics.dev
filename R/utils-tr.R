@@ -34,7 +34,7 @@
     ## Tool UI
     ac1_title = "Load ZIP file",
     ac1_p1 = "The dashboard requires a ZIP file that is produced by running the processing chain from your Open Foris Arena survey in Rstudio (local or online).",
-    ac1_p2 = "Once this file is produced, upload here:",
+    ac1_p2 = "Once this file is produced, upload it here:",
     #ac1_input1 = "Browse...",
     #ac1_input2 = "No file selected",
     ac1_msg_nodata = "No data uploaded.",
