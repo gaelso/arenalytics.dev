@@ -56,9 +56,9 @@
 fct_arenalyse <- function(.zip, .entity, .dim, .pvalue = 0.95, .cm, .lonely = "adjust", .pb_ss = NULL, .pb_id = NULL) {
 
   ## !!! FOR TESTING ONLY
-  # .zip <- fct_readzip2(.path = "data-raw/MAU_Shiny_(ethiopia_nfi2_new).zip")
-  # .zip <- .zip$data
-  # .entity = "tree" ; .dim = "stratum"
+  # .zip <- "inst/extdata/OLAP_shiny_demo.zip"
+  # var_meta <- .zip$var_meta$tree ; .zip <- .zip$data
+  # .entity = "tree" ; .dim = c("stratum", "tree_dbh_class_10")
   # .cm = "fast" ; .pb_ss = NULL ; .pb_id = NULL ; .lonely = "adjust" ; .pvalue = 0.95
   ## !!!
 
@@ -207,8 +207,9 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pvalue = 0.95, .cm, .lonely = "a
     }
 
     ## Expand all sub-unit x base-unit combinations
+    ## !!! GENERATES ERROR !!! > for now solved at many-to-many relationship down below
     df_data <- if (use_strat) {
-      df_data |>
+      tt <- df_data |>
         dplyr::group_by(dplyr::across(dplyr::all_of(strat_col))) |>
         tidyr::complete(!!!rlang::syms(dims_to_complete)) |>
         dplyr::ungroup()
@@ -256,13 +257,14 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pvalue = 0.95, .cm, .lonely = "a
       dplyr::left_join(bu_core, by = base_uuid)
 
     if (use_cluster) {
-      df_total <- df_total |>
-        dplyr::left_join(
-          dplyr::distinct(
-            df_data, dplyr::across(dplyr::all_of(c(base_uuid, cluster_uuid)))
-          ),
-          by = base_uuid
-        )
+      ## !!! CORR !!!
+      ## Can find NAs in cluster_uuid in entity tables, leading to duplicated plots
+      ## and many-to-many relationship during join
+      cluster_join <- df_data |>
+        #dplyr::filter(!is.na(cluster_uuid)) |>
+        dplyr::distinct(dplyr::across(dplyr::all_of(c(base_uuid, cluster_uuid))))
+
+      df_total <- df_total |> dplyr::left_join(cluster_join, by = base_uuid)
     }
   }
 
