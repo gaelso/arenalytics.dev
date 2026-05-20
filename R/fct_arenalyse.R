@@ -261,7 +261,7 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pvalue = 0.95, .cm, .lonely = "a
       ## Can find NAs in cluster_uuid in entity tables, leading to duplicated plots
       ## and many-to-many relationship during join
       cluster_join <- df_data |>
-        #dplyr::filter(!is.na(cluster_uuid)) |>
+        dplyr::filter(!is.na(cluster_uuid)) |>
         dplyr::distinct(dplyr::across(dplyr::all_of(c(base_uuid, cluster_uuid))))
 
       df_total <- df_total |> dplyr::left_join(cluster_join, by = base_uuid)
