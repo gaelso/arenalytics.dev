@@ -97,13 +97,27 @@ shiny_run_arenalytics_dev <- function(...) {
   app_footer <- div(
     class = "container footer text-center",
     tags$small(
-      "(c) 2026 Arenalytics v1.0.0 - Developed by ",
+      "(c) 2026-05 Arenalytics v1.0.0 - Developed by ",
       tags$strong("Arenalytics Team"),
-      " - With the support of the ", 
-      tags$a("AIM4Forests programme", href = "https://www.fao.org/in-action/aim4forests/en", target = "_blank")
+      " - for ",
+      tags$a("Open Foris Arena", href = "https://www.openforis.org/arena/", target = "_blank")
     )
   )
 
+  # app_footer <- div(
+  #   class = "container footer text-center",
+  #   tags$small(
+  #     "(c) 2026 Arenalytics v1.0.0 - Developed by ",
+  #     tags$strong("Arenalytics Team"),
+  #     " - With the support of the ",
+  #     tags$a("AIM4Forests programme", href = "https://www.fao.org/in-action/aim4forests/en", target = "_blank")
+  #   )
+  # )
+
+sampling_strategy <- tibble::tibble(
+  code = 1:5,
+  name = c("Random Sampling", "Systematic Sampling", "Stratified Random Sampling", "Stratified Systematic Sampling", "Two-phase Sampling")
+)
 
   ##
   ## UI ########################################################################
