@@ -239,7 +239,7 @@ mod_tool_server2 <- function(id, rv) {
       )
     })
 
-    ## . + Run fct_arenalyse() ------
+    ## . + Run core analysis ------
     observeEvent(input$btn_run_analysis, {
       # dims_sel <- if (identical(input$analysis_mode, "area")) {
       #   input$analysis_bu_dims
@@ -415,7 +415,7 @@ mod_tool_server2 <- function(id, rv) {
         info_row("Sampling strategy",         ch$samplingStrategy %||% "-"), # Retrieve the sampling design name
         info_row("Stratification attribute",       ch$stratumAttribute %||% "-"),
         info_row("Clustering",                     if (is_clustered) "Yes" else "No"),
-        info_row("Clustering attribute",           cluster_attr),
+        info_row("Clustering variable",           cluster_attr),
         info_row("Non-response bias correction",   "Unknown")
       )
     })
@@ -1032,8 +1032,9 @@ mod_tool_server2 <- function(id, rv) {
           label_analysis_table_columns()
       } else {
         table_display_df(input$analysis_table_source) |>
-          dplyr::select(
-            -"base_unit_count", -"item_count", dplyr::everything(), "item_count", "base_unit_count"
+          dplyr::relocate(
+            dplyr::any_of(c("item_count", "base_unit_count", "cluster_count")),
+            .after = dplyr::last_col()
           ) |>
           label_analysis_table_columns()
       }

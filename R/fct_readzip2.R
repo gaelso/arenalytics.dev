@@ -41,7 +41,7 @@
 fct_readzip2 <- function(.path, .pb_ss = NULL, .pb_id = NULL) {
 
   ## !!! FOR TESTING ONLY
-  # .path = "data-raw/MAU_Shiny_(ethiopia_nfi2_new).zip"
+  # .path = "inst/extdata/OLAP_shiny_demo.zip"
   # .pb_ss = NULL ; .pb_id = NULL
   # !!!
 
