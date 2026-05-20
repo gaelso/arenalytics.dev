@@ -6,8 +6,6 @@
 #'
 #' @param .zip Named list produced by \code{fct_readzip2()}.
 #' @param .entity Character scalar. Entity name (e.g. \code{"tree"}).
-#' @param .entity_prefix A character describing how OpenForis Arena prefix entity
-#'   tables. Default "MAU_".
 #'
 #' @return A tibble with one row per dimension column, containing:
 #'   \code{name}, \code{label}, \code{parentEntity}, \code{type},
@@ -17,33 +15,34 @@
 #' @importFrom rlang .data
 #'
 #' @noRd
-fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
+fct_varinfo <- function(.zip, .entity){
 
   ## !!! FOR TESTING ONLY
-  # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip") ; names(.zip)
-  # .entity <- .zip$chain_summary$analysis$entity
-  # .entity_prefix = "MAU_"
+  # .path = "data-raw/MAU_Shiny_(png_nfi_2024_upperplant) 1.zip"
+  # .zip <- fct_readzip2(.path = .path)$data ; names(.zip)
+  # .entity = "tree"
   ## !!!
 
   ## 0. Coerce inputs ------
-  .zip$chain_summary$resultVariables <- tibble::as_tibble(.zip$chain_summary$resultVariables)
-  .zip$schema_summary    <- tibble::as_tibble(.zip$schema_summary)
-  .zip$report_dimensions <- tibble::as_tibble(.zip$report_dimensions)
+  schema <- tibble::as_tibble(.zip$schema_summary)
+  resvar <- tibble::as_tibble(.zip$chain_summary$resultVariables)
+  repdim <- tibble::as_tibble(.zip$report_dimensions)
+  chain  <- .zip$chain_summary
 
-  chain          <- .zip$chain_summary
   label_language <- paste0("label_", chain$selectedLanguage)
-  clevel         <- chain$analysis$pValue
+
+  entity_prefix <- if (any(stringr::str_detect(names(.zip), "OLAP_*"))) "OLAP_" else "MAU_"
 
   ## 1. Entity labels & wide table ------
-  label_cols <- .zip$schema_summary |>
+  label_cols <- schema |>
     dplyr::filter(.data$type == "entity") |>
     dplyr::select(entity = "name", label = dplyr::all_of(label_language))
 
-  wt_filename <- chain$resultVariables |>
+  wt_filename <- resvar |>
     dplyr::filter(.data$areaBased, .data$active) |>
     dplyr::select("entityPath", "entity") |>
     dplyr::distinct() |>
-    dplyr::mutate(wide_table = paste0(.entity_prefix, .data$entity)) |>
+    dplyr::mutate(wide_table = paste0(entity_prefix, .data$entity)) |>
     dplyr::left_join(label_cols, by = "entity") |>
     dplyr::filter(.data$entity == .entity) |>
     dplyr::pull("wide_table")
@@ -52,7 +51,7 @@ fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
 
   ## 2. Column metadata ------
   ## Result variables: code dimensions + measures derived from chain
-  rv_meta <- chain$resultVariables |>
+  rv_meta <- resvar |>
     dplyr::select("name", "type", "categoryName", parentEntity = "entity", "label") |>
     dplyr::mutate(
       report_type = dplyr::if_else(.data$type == "Q", "measure", "dimension"),
@@ -61,7 +60,7 @@ fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
     )
 
   ## Schema summary: input dimensions
-  ss_meta <- .zip$schema_summary |>
+  ss_meta <- schema |>
     dplyr::mutate(
       categoryName = dplyr::if_else(
         .data$taxonomyName != "", .data$taxonomyName, .data$categoryName
@@ -117,13 +116,27 @@ fct_varinfo <- function(.zip, .entity, .entity_prefix = "MAU_"){
       categoryName    = stringr::str_remove(.data$categoryName, "\\[.*")
     )
 
-  ## Filter out dims with no data
+  ## Filter: dims with no data
   report_dims <- .zip$report_dimensions |>
     dplyr::filter(.data$entity == .entity) |>
     dplyr::pull("dimension")
 
+  ## Filter: vars where multiple is TRUE
+  multivars <- schema |> dplyr::filter(as.logical(.data$multiple), type != "entity") |> dplyr::pull("name")
+
+  ## !!! TMP !!!
+  ## In future version there will be a field "hiddenInAnalyticalDashboard" in schemaSummary.csv
+  if (!"hiddenInAnalyticalDashboard" %in% names(schema)) schema$hiddenInAnalyticalDashboard <- FALSE
+
+  ## Filter: vars that are set as hidden for the analytical dashboard
+  hiddenvars <- schema |> dplyr::filter(.data$hiddenInAnalyticalDashboard) |> dplyr::pull("name")
+
   wt_names <- wt_names |>
-    dplyr::filter((.data$report_type == "dimension" & .data$name %in% report_dims) | .data$report_type != "dimension")
+    dplyr::filter(
+      (.data$report_type == "dimension" & .data$name %in% report_dims) | .data$report_type != "dimension",
+      !.data$name %in% multivars,
+      !.data$name %in% hiddenvars
+    )
 
   wt_names
 }

@@ -4,7 +4,7 @@
 \alias{fct_readzip2}
 \title{Read OpenForis Arena OLAP zipfile data (error-safe version)}
 \usage{
-fct_readzip2(.path, .pb_ss = NULL, .pb_id = NULL, .entity_prefix = "MAU_")
+fct_readzip2(.path, .pb_ss = NULL, .pb_id = NULL)
 }
 \arguments{
 \item{.path}{A path to the data ZIP file.}
@@ -14,9 +14,6 @@ Default \code{NULL} (progress bar is only updated inside a Shiny context).}
 
 \item{.pb_id}{The widget ID for \code{\link[shinyWidgets:progress-bar]{shinyWidgets::updateProgressBar()}}.
 Default \code{NULL}.}
-
-\item{.entity_prefix}{A character describing how OpenForis Arena prefix entity
-tables. Default "MAU_".}
 }
 \value{
 A named list of entity data frames and survey descriptors, or
@@ -48,7 +45,7 @@ if (nzchar(zipfile) && file.exists(zipfile)) {
     message("Files with read errors: ", paste(names(errs), collapse = ", "))
   }
 
-  summary(zipdata$OLAP_tree$tree_biomass_ag)
+  summary(zipdata$data$OLAP_tree$tree_biomass_ag)
 }
 
 }

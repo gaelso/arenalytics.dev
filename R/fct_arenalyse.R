@@ -56,14 +56,10 @@
 fct_arenalyse <- function(.zip, .entity, .dim, .pvalue = 0.95, .cm, .lonely = "adjust", .pb_ss = NULL, .pb_id = NULL) {
 
   ## !!! FOR TESTING ONLY
-  # .zip <- fct_readzip2(.path = "inst/extdata/OLAP_Shiny_demo.zip")$data
-  # .zip <- fct_readzip2(.path = "~/syncwork/FAO-2026/support/support-arenalytics/MAU_Shiny_(png_nfi_2024_upperplant) 2.zip")$data
-  # .entity <- .zip$chain_summary$analysis$entity
-  # .dim <- .zip$chain_summary$analysis$dimensions
-  # .dim
-  # .dim <- "cluster_forest_type"
-  # .dim <- "stratum_calc"
-  # .cm = "fast" ; .pb_ss = NULL ; .pb_id = NULL
+  # .zip <- fct_readzip2(.path = "data-raw/MAU_Shiny_(ethiopia_nfi2_new).zip")
+  # .zip <- .zip$data
+  # .entity = "tree" ; .dim = "stratum"
+  # .cm = "fast" ; .pb_ss = NULL ; .pb_id = NULL ; .lonely = "adjust" ; .pvalue = 0.95
   ## !!!
 
   ## ++ ##
@@ -96,9 +92,7 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pvalue = 0.95, .cm, .lonely = "a
   wt <- .zip[[entity_tblname]] |> tibble::as_tibble()
 
   ## Get entity columns metadata
-  wt_names <- fct_varinfo(
-    .zip = .zip, .entity = .entity, .entity_prefix = entity_prefix
-  )
+  wt_names <- fct_varinfo(.zip = .zip, .entity = .entity)
   log_step("Entity metadata loaded.", value = 15)
 
   ## Validate .lonely
@@ -590,3 +584,4 @@ fct_arenalyse <- function(.zip, .entity, .dim, .pvalue = 0.95, .cm, .lonely = "a
   list(MEANS = out_mean, TOTALS = out_total)
   ## ++ ##
 }
+

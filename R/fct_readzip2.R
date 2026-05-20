@@ -16,8 +16,6 @@
 #'   Default `NULL` (progress bar is only updated inside a Shiny context).
 #' @param .pb_id The widget ID for [shinyWidgets::updateProgressBar()].
 #'   Default `NULL`.
-#' @param .entity_prefix A character describing how OpenForis Arena prefix entity
-#'   tables. Default "MAU_".
 #'
 #' @returns A named list of entity data frames and survey descriptors, or
 #'   `NULL` if the archive itself cannot be opened. Each element is either the
@@ -36,16 +34,15 @@
 #'     message("Files with read errors: ", paste(names(errs), collapse = ", "))
 #'   }
 #'
-#'   summary(zipdata$OLAP_tree$tree_biomass_ag)
+#'   summary(zipdata$data$OLAP_tree$tree_biomass_ag)
 #' }
 #'
 #' @export
-fct_readzip2 <- function(.path, .pb_ss = NULL, .pb_id = NULL, .entity_prefix = "MAU_") {
+fct_readzip2 <- function(.path, .pb_ss = NULL, .pb_id = NULL) {
 
   ## !!! FOR TESTING ONLY
-  # .path = "inst/extdata/OLAP_shiny_demo.zip"
-  # .path = "inst/extdata/OLAP_shiny_demo_corrupted.zip"
-  # .pb_ss = NULL ; .pb_id = NULL ; .entity_prefix = "MAU_"
+  # .path = "data-raw/MAU_Shiny_(ethiopia_nfi2_new).zip"
+  # .pb_ss = NULL ; .pb_id = NULL
   # !!!
 
 
@@ -67,6 +64,7 @@ fct_readzip2 <- function(.path, .pb_ss = NULL, .pb_id = NULL, .entity_prefix = "
   ## Strip directory prefixes and extensions for output list names
   ## (basename handles ZIPs that embed a subdirectory; file_path_sans_ext strips ext)
   file_names <- tools::file_path_sans_ext(basename(zip_content))
+  entity_prefix <- if (any(stringr::str_detect(names(zip_content), "OLAP_*"))) "OLAP_" else "MAU_"
 
   ## Accumulate per-file read errors: name = file, value = error message
   read_errors <- character(0)
@@ -135,9 +133,11 @@ fct_readzip2 <- function(.path, .pb_ss = NULL, .pb_id = NULL, .entity_prefix = "
 
   })
 
-  ## Change names to lowercase (myTable -> my_table)
-  file_names <- tolower(gsub("([a-z0-9])([A-Z])", "\\1_\\2", file_names))
-  file_names <- stringr::str_replace_all(file_names, tolower(.entity_prefix), .entity_prefix)
+  ## Change names to lowercase (myTable -> my_table) then bring back entity prefix as uppercase
+  file_names <- file_names |>
+    stringr::str_replace_all("([a-z0-9])([A-Z])", "\\1_\\2") |>
+    tolower() |>
+    stringr::str_replace_all(tolower(entity_prefix), entity_prefix)
   names(zipdata) <- file_names
 
   ## -- 3. Emit a final summary message so the Shiny console div shows outcome -----
@@ -159,17 +159,37 @@ fct_readzip2 <- function(.path, .pb_ss = NULL, .pb_id = NULL, .entity_prefix = "
 
     ## Generate metadata of entities column names
     ## CF: fct_varinfo() in R/fct_varinfo.R
-    entity_names <- file_names |>
-      stringr::str_subset(.entity_prefix) |>
-      stringr::str_remove(.entity_prefix)
+    entity_filenames <- file_names |> stringr::str_subset(entity_prefix)
+    entity_names     <- entity_filenames |> stringr::str_remove(entity_prefix)
 
     var_meta <- purrr::map(entity_names, function(x){
-      fct_varinfo(.zip = zipdata, .entity = x, .entity_prefix = .entity_prefix)
+      fct_varinfo(.zip = zipdata, .entity = x)
     })
-
     names(var_meta) <- entity_names
 
-    out <- list(data = zipdata, errors = read_errors, var_meta = var_meta)
+    ## Remove all base unit in Entities that have weight == 0
+    for (i in entity_filenames) {
+      zipdata[[i]] <- zipdata[[i]] |> dplyr::filter(.data$weight != 0, !is.na(.data$weight))
+    }
+
+    ## !!! TMP !!!
+    ## Temporary fix:  in  chain_summary analysis table is removed and three items are moved up:
+    ## "clusteringVariances" "nonResponseBiasCorrection" "reportingArea"
+    if ("analysis" %in% names(zipdata$chain_summary)) {
+      if ("reportingArea" %in% names(zipdata$chain_summary$analysis))
+        zipdata$chain_summary$reportingArea <- zipdata$chain_summary$analysis$reportingArea
+      if ("clusteringVariances" %in% names(zipdata$chain_summary$analysis))
+        zipdata$chain_summary$clusteringVariances <- zipdata$chain_summary$analysis$clusteringVariances
+      if ("nonResponseBiasCorrection" %in% names(zipdata$chain_summary$analysis))
+        zipdata$chain_summary$nonResponseBiasCorrection <- zipdata$chain_summary$analysis$nonResponseBiasCorrection
+
+      zipdata$chain_summary$analysis <- NULL
+
+    }
+
+
+
+    out <- list(data = zipdata, errors = read_errors, var_meta = var_meta, entity_prefix = entity_prefix)
 
     message(sprintf(
       "[%s] \u2713 All %d file(s) loaded successfully and variables metadata tables built.",

@@ -4,13 +4,10 @@
 \alias{fct_checkzip}
 \title{Check OpenForis Arena pre-processed ZIP file integrity}
 \usage{
-fct_checkzip(.path, .entity_prefix)
+fct_checkzip(.path)
 }
 \arguments{
 \item{.path}{a path to the zip file from}
-
-\item{.entity_prefix}{A character describing how OpenForis Arena prefix entity
-tables. Default "MAU_".}
 }
 \value{
 A list with TRUE/FALSE.

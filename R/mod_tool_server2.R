@@ -9,11 +9,8 @@ mod_tool_server2 <- function(id, rv) {
 
     ns <- session$ns
 
-    ## Backward compatibility prefix of entity tables in the ZIP file
-    .ep <- "MAU_"
-
     ## !!! FOR TESTING: see tests/test-tool-server.R
-    
+
     ##
     ## Accordions outputs and events ######
     ##
@@ -22,20 +19,20 @@ mod_tool_server2 <- function(id, rv) {
     ## Action 1: (1) check data files list, (2) update message and (3) active read button
     observeEvent(input$load_zip, {
 
-      rv$inputs$path_zip <- input$load_zip$datapath
-      rv$inputs$check_zip <- fct_checkzip(.path = rv$inputs$path_zip, .entity_prefix = .ep)
+      rv$inputs$pathzip <- input$load_zip$datapath
+      rv$inputs$checkzip <- fct_checkzip(.path = rv$inputs$pathzip)
 
       shinyjs::hide("msg_no_file")
-      shinyjs::toggle("msg_file_ok",    condition = rv$inputs$check_zip$all_ok)
-      shinyjs::toggle("msg_file_error", condition = !rv$inputs$check_zip$all_ok)
-      shinyjs::toggleState("btn_read_data", condition = rv$inputs$check_zip$all_ok)
+      shinyjs::toggle("msg_file_ok",    condition = rv$inputs$checkzip$all_ok)
+      shinyjs::toggle("msg_file_error", condition = !rv$inputs$checkzip$all_ok)
+      shinyjs::toggleState("btn_read_data", condition = rv$inputs$checkzip$all_ok)
 
     })
 
     output$file_error_detail <- renderPrint({
-      req(rv$inputs$check_zip)
-      if(!rv$inputs$check_zip$all_ok) {
-        cat("Missing files:\n", paste(rv$inputs$check_zip$missing, collapse = ", "))
+      req(rv$inputs$checkzip)
+      if(!rv$inputs$checkzip$all_ok) {
+        cat("Missing files:\n", paste(rv$inputs$checkzip$missing, collapse = ", "))
       }
     })
 
@@ -71,17 +68,25 @@ mod_tool_server2 <- function(id, rv) {
       ## Read data and update progress
       ## All messages from fct_readzip2() — including per-file success/error lines
       ## and the final summary — are captured here and appended to the console div.
-      rv$inputs <- withCallingHandlers(
+      tmp_out <- withCallingHandlers(
         {
+          ## +++
           fct_readzip2(
-            .path = rv$inputs$path_zip, .pb_ss = session, .pb_id = "readdata_progress", .entity_prefix = .ep
+            .path = rv$inputs$pathzip, .pb_ss = session, .pb_id = "readdata_progress"
           )
+          ## +++
         },
         message = function(m) {
           shinyjs::html(id = "readdata_console", html = paste0(m$message, '<br>'), add = TRUE)
           invokeRestart("muffleMessage")
         }
       )
+
+      ## Assign the function output to rv$inputs
+      for (nm in names(tmp_out)) {
+        rv$inputs[[nm]] <- tmp_out[[nm]]
+      }
+      rm(tmp_out)
 
       ## Enable the insight button only when data loaded AND no read errors.
       ## Any error lines are already visible in the console div above.
@@ -110,8 +115,8 @@ mod_tool_server2 <- function(id, rv) {
       if (length(names(rv$inputs$data)) > 0) {
         ## Convention entities = 'tree' etc., entities_labs = 'Tree'
         rv$insights$entities  <- names(rv$inputs$data) |>
-          stringr::str_subset(.ep) |>
-          stringr::str_remove(.ep)
+          stringr::str_subset(rv$inputs$checkzip$entity_prefix) |>
+          stringr::str_remove(rv$inputs$checkzip$entity_prefix)
 
         entity_lang <- rv$inputs$data$schema_summary |>
           dplyr::as_tibble() |>
@@ -289,7 +294,7 @@ mod_tool_server2 <- function(id, rv) {
                 .zip = rv$inputs$data,
                 .entity = input$analysis_sel_entity,
                 .dim = rv$analysis$dims_sel,
-                .entity_prefix = .ep
+                .entity_prefix = rv$inputs$checkzip$entity_prefix
               )
 
               message(sprintf(
@@ -303,7 +308,10 @@ mod_tool_server2 <- function(id, rv) {
               )
 
               area_result
+
             } else {
+
+              ## +++
               fct_arenalyse(
                 .zip    = rv$inputs$data,
                 .entity = input$analysis_sel_entity,
@@ -314,6 +322,7 @@ mod_tool_server2 <- function(id, rv) {
                 .pb_ss  = session,
                 .pb_id  = "analysis_progress_bar"
               )
+              ## +++
 
             }
           },
@@ -401,9 +410,9 @@ mod_tool_server2 <- function(id, rv) {
       }
 
       tags$div(
-        info_row("Survey code",                    ch$surveyName %||% "-"),
-        info_row("Cycle number",                   ch$selectedCycle %||% "-"),
-        info_row("Sampling strategy code",         ch$samplingStrategy %||% "-"),
+        info_row("Survey",                    ch$surveyName %||% "-"),
+        info_row("Cycle",                   ch$selectedCycle %||% "-"),
+        info_row("Sampling strategy",         ch$samplingStrategy %||% "-"), # Retrieve the sampling design name
         info_row("Stratification attribute",       ch$stratumAttribute %||% "-"),
         info_row("Clustering",                     if (is_clustered) "Yes" else "No"),
         info_row("Clustering attribute",           cluster_attr),
@@ -519,7 +528,7 @@ mod_tool_server2 <- function(id, rv) {
     get_current_insight_context <- function() {
       req(rv$inputs$data, input$analysis_sel_entity)
 
-      entity_name <- paste0(.ep, input$analysis_sel_entity)
+      entity_name <- paste0(rv$inputs$checkzip$entity_prefix, input$analysis_sel_entity)
       dim_meta <- rv$inputs$var_meta[[input$analysis_sel_entity]]
       entity_table <- rv$inputs$data[[entity_name]] |> tibble::as_tibble()
 
@@ -730,7 +739,7 @@ mod_tool_server2 <- function(id, rv) {
     }
 
     ## ++ ##
-    build_area_result <- function(.zip, .entity, .dim, .entity_prefix = .ep) {
+    build_area_result <- function(.zip, .entity, .dim, .entity_prefix = rv$inputs$checkzip$entity_prefix) {
       chain <- .zip$chain_summary
       base_uuid <- paste0(chain$baseUnit, "_uuid")
       entity_tbl <- .zip[[paste0(.entity_prefix, .entity)]] |> tibble::as_tibble()
@@ -904,6 +913,7 @@ mod_tool_server2 <- function(id, rv) {
 
     report_summary_params <- function() {
       req(rv$analysis$result, rv$inputs$data)
+      ## !!! ADD HERE ClusterngVariance and Reporting area
 
       base_dims <- selected_dim_labels(TRUE)
       sub_dims  <- selected_dim_labels(FALSE)
