@@ -200,7 +200,7 @@ mod_tool_UI2 <- function(id, i18n, .tr){
   ## . . + Initial message ------
   insight_msg <- div(
     id = ns("panel_insight_msg"),
-    bsicons::bs_icon("arrow-left"), " Start with uploading your OLAP zipfile in the sidebar.",
+    bsicons::bs_icon("arrow-left"), " Start with uploading your MAU zipfile in the sidebar.",
     class = "text-warning",
     style = "font-style: italic;"
   )
